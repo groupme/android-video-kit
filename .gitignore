@@ -1,0 +1,40 @@
+# output files
+bin/
+gen/
+out/
+obj/
+target/
+classes/
+build/
+gen*
+
+# local configuration files
+local.properties
+store.properties
+gradle.properties
+
+# IDE project files
+*.iws
+*.ipr
+.idea
+.project
+.classpath
+.gradle
+*.iml
+lint_files/
+
+# Crashlytics uses resources to store a build id.
+com_crashlytics_export_strings.xml
+crashlytics-build.properties
+
+# Never want to ever store the signing key in the repo.
+*.keystore
+
+# Unused tools files.
+lint.xml
+proguard.cfg
+
+# Garbage files.
+.DS_Store
+tmp/
+*~
