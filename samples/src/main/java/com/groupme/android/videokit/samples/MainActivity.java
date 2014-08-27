@@ -1,6 +1,7 @@
 package com.groupme.android.videokit.samples;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
@@ -9,31 +10,30 @@ import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
-import android.media.cts.ExtractDecodeEditEncodeMuxTest;
+import android.media.cts.ExtractDecodeEditEncodeMux;
 import android.media.cts.InputSurface;
 import android.net.Uri;
 import android.opengl.GLES20;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.groupme.android.videokit.VideoActivity;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements ExtractDecodeEditEncodeMux.OnVideoEncodedListener {
     private static final int REQUEST_PICK_VIDEO = 0;
 
     // parameters for the video encoder
@@ -51,6 +51,8 @@ public class MainActivity extends Activity {
             MediaCodecInfo.CodecProfileLevel.AACObjectHE;
     private static final int OUTPUT_AUDIO_SAMPLE_RATE_HZ = 44100; // Must match the input stream.
     private static final long TIMEOUT_USEC = 10000;
+
+    private ProgressDialog mProgressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,43 +74,23 @@ public class MainActivity extends Activity {
         testVideoEncode.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            ExtractDecodeEditEncodeMuxTest test = new ExtractDecodeEditEncodeMuxTest();
-                            test.setContext(MainActivity.this);
-                            test.testExtractDecodeEditEncodeMuxAudioVideo();
-                        } catch (Throwable throwable) {
-                            throwable.printStackTrace();
-                        }
-                    }
-                }).start();
-
-//                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-//                intent.setType("video/*");
-//                startActivityForResult(intent, REQUEST_PICK_VIDEO);
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("video/*");
+                startActivityForResult(intent, REQUEST_PICK_VIDEO);
             }
         });
     }
 
     private void encodeVideo(final Uri videoUri) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    setupComponents(videoUri);
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(MainActivity.this, "Done. Enjoy your video!", Toast.LENGTH_LONG).show();
-                        }
-                    });
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
+        ExtractDecodeEditEncodeMux.with(this)
+                .source(videoUri)
+                .listener(this)
+                .output(ExtractDecodeEditEncodeMux.getDefaultOutputFilePath());
+        mProgressDialog = new ProgressDialog(this);
+        mProgressDialog.setIndeterminate(true);
+        mProgressDialog.setCancelable(false);
+        mProgressDialog.setMessage("Encoding Video");
+        mProgressDialog.show();
     }
 
     @Override
@@ -527,5 +509,25 @@ public class MainActivity extends Activity {
             }
         }
         return null;
+    }
+
+    @Override
+    public void onVideoEncoded(String outputFile) {
+        if (mProgressDialog.isShowing()) {
+            mProgressDialog.dismiss();
+
+            Intent intent = new Intent(android.content.Intent.ACTION_VIEW);
+            intent.setDataAndType(Uri.fromFile(new File(outputFile)), "video/*");
+            startActivity(intent);
+        }
+    }
+
+    @Override
+    public void onError() {
+        if (mProgressDialog.isShowing()) {
+            mProgressDialog.dismiss();
+        }
+
+        Toast.makeText(this, "Error encoding video :(", Toast.LENGTH_LONG).show();
     }
 }
