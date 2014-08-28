@@ -68,9 +68,12 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
     private static final int OUTPUT_VIDEO_BIT_RATE = 500 * 1000; // 500 Kbps
     private static final int OUTPUT_VIDEO_FRAME_RATE = 30; // 30fps
-    private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 10; // 1 seconds between I-frames
+    private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 10; // 10 seconds between I-frames
     private static final int OUTPUT_VIDEO_COLOR_FORMAT =
             MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface;
+    private static final float OUTPUT_MAX_WIDTH = 1280;
+    private static final float OUTPUT_MAX_HEIGHT = 720;
+    private static final String KEY_ROTATION = "rotation";
 
     // parameters for the audio encoder
     private static final String OUTPUT_AUDIO_MIME_TYPE = "audio/mp4a-latm"; // Advanced Audio Coding
@@ -83,6 +86,8 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
 
     /** The destination file for the encoded output. */
     private String mOutputFile;
+
+    private int mOrientationHint;
 
     private OnVideoEncodedListener mListener;
 
@@ -122,8 +127,8 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
             public void run() {
                 try {
                     extractDecodeEditEncodeMux();
-                } catch (Throwable throwable) {
-                    throwable.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
                     new Handler(Looper.getMainLooper()).post(new Runnable() {
                         @Override
                         public void run() {
@@ -187,15 +192,43 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
 
                 // We avoid the device-specific limitations on width and height by using values
                 // that are multiples of 16, which all tested devices seem to be able to handle.
+
+            int inputWidth = inputFormat.getInteger(MediaFormat.KEY_WIDTH);
+            int inputHeight = inputFormat.getInteger(MediaFormat.KEY_HEIGHT);
+            int outputHeight;
+            int outputWidth;
+
+
+            if (inputWidth >= inputHeight) {
+                float ratio = Math.min(OUTPUT_MAX_WIDTH / inputWidth, OUTPUT_MAX_HEIGHT / inputHeight);
+                outputHeight = (int) (ratio * inputHeight);
+                outputWidth = (int) (ratio * inputWidth);
+            } else {
+                float ratio = Math.min(OUTPUT_MAX_WIDTH / inputHeight, OUTPUT_MAX_HEIGHT / inputWidth);
+                outputHeight = (int) (ratio * inputWidth);
+                outputWidth = (int) (ratio * inputHeight);
+                mOrientationHint = 90;
+            }
+
+            mOrientationHint = inputFormat.containsKey(KEY_ROTATION) ? inputFormat.getInteger(KEY_ROTATION) : 0;
+
                 MediaFormat outputVideoFormat =
                         MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE,
-                                inputFormat.getInteger(MediaFormat.KEY_WIDTH),
-                                inputFormat.getInteger(MediaFormat.KEY_HEIGHT));
+                                outputWidth,
+                                outputHeight);
 
                 // Set some properties. Failing to specify some of these can cause the MediaCodec
                 // configure() call to throw an unhelpful exception.
                 outputVideoFormat.setInteger(
-                        MediaFormat.KEY_COLOR_FORMAT, OUTPUT_VIDEO_COLOR_FORMAT);
+                        MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+
+                MediaCodecInfo.CodecCapabilities capabilities = videoCodecInfo.getCapabilitiesForType("video/avc");
+
+                for (int i = 0; i < capabilities.profileLevels.length; i++) {
+                    MediaCodecInfo.CodecProfileLevel level = capabilities.profileLevels[i];
+                    Log.e(TAG, String.format("Using codec profile: %d level: %d ", level.profile, level.level));
+                }
+
                 outputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, OUTPUT_VIDEO_BIT_RATE);
                 outputVideoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, OUTPUT_VIDEO_FRAME_RATE);
                 outputVideoFormat.setInteger(
@@ -949,6 +982,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 Log.d(TAG, "muxer: adding audio track.");
                 outputAudioTrack = muxer.addTrack(encoderOutputAudioFormat);
                 Log.d(TAG, "muxer: starting");
+                muxer.setOrientationHint(mOrientationHint);
                 muxer.start();
                 muxing = true;
             }
@@ -962,6 +996,8 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
         assertEquals("no frame should be pending", -1, pendingAudioDecoderOutputBufferIndex);
 
         // TODO: check audio frame count?
+
+        Log.d(TAG, String.format("audioDecodedFrameCount: %s audioExtractedFrameCount: %s", audioDecodedFrameCount, audioExtractedFrameCount));
     }
 
     private static boolean isVideoFormat(MediaFormat format) {
