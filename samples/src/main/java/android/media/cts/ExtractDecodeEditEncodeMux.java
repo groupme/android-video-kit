@@ -57,29 +57,28 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
 
     private static final String TAG = ExtractDecodeEditEncodeMux.class.getSimpleName();
     private static final boolean VERBOSE = false; // lots of logging
+    private boolean mCopyAudio = true;
 
     /** How long to wait for the next buffer to become available. */
-    private static final int TIMEOUT_USEC = 10000;
+    private static final int TIMEOUT_USEC = 40000;
 
     /** Where to output the test files. */
     private static final File OUTPUT_FILENAME_DIR = Environment.getExternalStorageDirectory();
 
     // parameters for the video encoder
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
-    private static final int OUTPUT_VIDEO_BIT_RATE = 500 * 1000; // 500 Kbps
+    private static final int OUTPUT_VIDEO_BIT_RATE = 2000 * 1000; // 2 MBps
     private static final int OUTPUT_VIDEO_FRAME_RATE = 30; // 30fps
     private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 10; // 10 seconds between I-frames
-    private static final int OUTPUT_VIDEO_COLOR_FORMAT =
-            MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface;
     private static final float OUTPUT_MAX_WIDTH = 1280;
     private static final float OUTPUT_MAX_HEIGHT = 720;
     private static final String KEY_ROTATION = "rotation";
 
     // parameters for the audio encoder
-    private static final String OUTPUT_AUDIO_MIME_TYPE = "audio/mp4a-latm"; // Advanced Audio Coding
-    private static final int OUTPUT_AUDIO_CHANNEL_COUNT = 2; // Must match the input stream.
+    private static final String OUTPUT_AUDIO_MIME_TYPE = "audio/MP4A-LATM"; // Advanced Audio Coding
     private static final int OUTPUT_AUDIO_BIT_RATE = 128 * 1024;
-    private static final int OUTPUT_AUDIO_AAC_PROFILE = MediaCodecInfo.CodecProfileLevel.AACObjectHE;
+    //private static final int OUTPUT_AUDIO_AAC_PROFILE = MediaCodecInfo.CodecProfileLevel.AACObjectERLC; WORKS! on htc m8
+    private static final int OUTPUT_AUDIO_AAC_PROFILE = MediaCodecInfo.CodecProfileLevel.AACObjectERLC;
 
     /** The uri used as the input file */
     private Uri mSourceVideoUri;
@@ -92,7 +91,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
     private OnVideoEncodedListener mListener;
 
     public interface OnVideoEncodedListener {
-        public void onVideoEncoded(String outputFile);
+        public void onVideoEncoded(String outputFile, double inputFileSize, double outputFileSize, double timeToEncode);
         public void onError();
     }
 
@@ -161,7 +160,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
         if (videoCodecInfo == null) {
             // Don't fail CTS if they don't have an AVC codec (not here, anyway).
             Log.e(TAG, "Unable to find an appropriate codec for " + OUTPUT_VIDEO_MIME_TYPE);
-            return;
+            throw new RuntimeException("Unable to find an appropriate codec for " + OUTPUT_VIDEO_MIME_TYPE);
         }
         if (VERBOSE) Log.d(TAG, "video found codec: " + videoCodecInfo.getName());
 
@@ -169,7 +168,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
         if (audioCodecInfo == null) {
             // Don't fail CTS if they don't have an AAC codec (not here, anyway).
             Log.e(TAG, "Unable to find an appropriate codec for " + OUTPUT_AUDIO_MIME_TYPE);
-            return;
+            throw new RuntimeException("Unable to find an appropriate codec for " + OUTPUT_AUDIO_MIME_TYPE);
         }
         if (VERBOSE) Log.d(TAG, "audio found codec: " + audioCodecInfo.getName());
 
@@ -222,7 +221,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 outputVideoFormat.setInteger(
                         MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
 
-                MediaCodecInfo.CodecCapabilities capabilities = videoCodecInfo.getCapabilitiesForType("video/avc");
+                MediaCodecInfo.CodecCapabilities capabilities = videoCodecInfo.getCapabilitiesForType(OUTPUT_VIDEO_MIME_TYPE);
 
                 for (int i = 0; i < capabilities.profileLevels.length; i++) {
                     MediaCodecInfo.CodecProfileLevel level = capabilities.profileLevels[i];
@@ -246,6 +245,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 outputSurface = new OutputSurface();
                 videoDecoder = createVideoDecoder(inputFormat, outputSurface.getSurface());
 
+            if (mCopyAudio) {
                 audioExtractor = createExtractor();
                 int audioInputTrack = getAndSelectAudioTrackIndex(audioExtractor);
                 assertTrue("missing audio track in test video", audioInputTrack != -1);
@@ -254,7 +254,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 MediaFormat outputAudioFormat =
                         MediaFormat.createAudioFormat(
                                 OUTPUT_AUDIO_MIME_TYPE, audioInputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE),
-                                OUTPUT_AUDIO_CHANNEL_COUNT);
+                                audioInputFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT));
                 outputAudioFormat.setInteger(MediaFormat.KEY_BIT_RATE, OUTPUT_AUDIO_BIT_RATE);
                 outputAudioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, OUTPUT_AUDIO_AAC_PROFILE);
 
@@ -263,6 +263,8 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 audioEncoder = createAudioEncoder(audioCodecInfo, outputAudioFormat);
                 // Create a MediaCodec for the decoder, based on the extractor's format.
                 audioDecoder = createAudioDecoder(audioInputFormat);
+            }
+
 
             // Creates a muxer but do not start or add tracks just yet.
             muxer = createMuxer();
@@ -387,25 +389,30 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
             throw exception;
         }
 
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                if (mListener != null) {
-                    mListener.onVideoEncoded(mOutputFile);
-                }
-            }
-        });
-
-
         Cursor returnCursor =
                 getContext().getContentResolver().query(mSourceVideoUri, null, null, null, null);
         int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
         returnCursor.moveToFirst();
 
-        Log.d(TAG, String.format("Input file: %sMB", Math.round(returnCursor.getLong(sizeIndex) / 1024. / 1000 * 10) / 10.));
-        Log.d(TAG, String.format("Output file: %sMB", Math.round(new File(mOutputFile).length() / 1024. / 1000 * 10) / 10.));
-        Log.d(TAG, String.format("Time to encode: %ss", Math.round(((System.currentTimeMillis() - mStartTime) / 1000.) * 10) / 10.));
+        final double inputFileSize = Math.round(returnCursor.getLong(sizeIndex) / 1024. / 1000 * 10) / 10.;
+        final double outputFileSize = Math.round(new File(mOutputFile).length() / 1024. / 1000 * 10) / 10.;
+        final double timeToEncode = Math.round(((System.currentTimeMillis() - mStartTime) / 1000.) * 10) / 10.;
+
+        Log.d(TAG, String.format("Input file: %sMB", inputFileSize));
+        Log.d(TAG, String.format("Output file: %sMB", outputFileSize));
+        Log.d(TAG, String.format("Time to encode: %ss", timeToEncode));
         returnCursor.close();
+
+
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                if (mListener != null) {
+                    mListener.onVideoEncoded(mOutputFile, inputFileSize, outputFileSize, timeToEncode);
+                }
+            }
+        });
+
     }
 
     /**
@@ -534,12 +541,21 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
         MediaCodec.BufferInfo videoDecoderOutputBufferInfo = new MediaCodec.BufferInfo();
         MediaCodec.BufferInfo videoEncoderOutputBufferInfo = new MediaCodec.BufferInfo();
 
-        ByteBuffer[] audioDecoderInputBuffers = audioDecoder.getInputBuffers();
-        ByteBuffer[] audioDecoderOutputBuffers =  audioDecoder.getOutputBuffers();
-        ByteBuffer[] audioEncoderInputBuffers = audioEncoder.getInputBuffers();
-        ByteBuffer[] audioEncoderOutputBuffers = audioEncoder.getOutputBuffers();
-        MediaCodec.BufferInfo audioDecoderOutputBufferInfo = new MediaCodec.BufferInfo();
-        MediaCodec.BufferInfo audioEncoderOutputBufferInfo = new MediaCodec.BufferInfo();
+        ByteBuffer[] audioDecoderInputBuffers = null;
+        ByteBuffer[] audioDecoderOutputBuffers =  null;
+        ByteBuffer[] audioEncoderInputBuffers = null;
+        ByteBuffer[] audioEncoderOutputBuffers = null;
+        MediaCodec.BufferInfo audioDecoderOutputBufferInfo = null;
+        MediaCodec.BufferInfo audioEncoderOutputBufferInfo = null;
+
+        if (mCopyAudio) {
+            audioDecoderInputBuffers = audioDecoder.getInputBuffers();
+            audioDecoderOutputBuffers =  audioDecoder.getOutputBuffers();
+            audioEncoderInputBuffers = audioEncoder.getInputBuffers();
+            audioEncoderOutputBuffers = audioEncoder.getOutputBuffers();
+            audioDecoderOutputBufferInfo = new MediaCodec.BufferInfo();
+            audioEncoderOutputBufferInfo = new MediaCodec.BufferInfo();
+        }
 
         // We will get these from the decoders when notified of a format change.
         MediaFormat decoderOutputVideoFormat = null;
@@ -573,35 +589,34 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
 
         long previousPresentationTime = 0L;
 
-        while (!videoEncoderDone || !audioEncoderDone) {
-            if (VERBOSE) {
-                Log.d(TAG, String.format(
-                        "loop: "
+        while (!videoEncoderDone || (mCopyAudio && !audioEncoderDone)) {
+            Log.d(TAG, String.format(
+                    "loop: "
 
-                        + "V {"
-                        + "extracted:%d(done:%b) "
-                        + "decoded:%d(done:%b) "
-                        + "encoded:%d(done:%b)} "
+                            + "V {"
+                            + "extracted:%d(done:%b) "
+                            + "decoded:%d(done:%b) "
+                            + "encoded:%d(done:%b)} "
 
-                        + "A {"
-                        + "extracted:%d(done:%b) "
-                        + "decoded:%d(done:%b) "
-                        + "encoded:%d(done:%b) "
-                        + "pending:%d} "
+                            + "A {"
+                            + "extracted:%d(done:%b) "
+                            + "decoded:%d(done:%b) "
+                            + "encoded:%d(done:%b) "
+                            + "pending:%d} "
 
-                        + "muxing:%b(V:%d,A:%d)",
+                            + "muxing:%b(V:%d,A:%d)",
 
-                        videoExtractedFrameCount, videoExtractorDone,
-                        videoDecodedFrameCount, videoDecoderDone,
-                        videoEncodedFrameCount, videoEncoderDone,
+                    videoExtractedFrameCount, videoExtractorDone,
+                    videoDecodedFrameCount, videoDecoderDone,
+                    videoEncodedFrameCount, videoEncoderDone,
 
-                        audioExtractedFrameCount, audioExtractorDone,
-                        audioDecodedFrameCount, audioDecoderDone,
-                        audioEncodedFrameCount, audioEncoderDone,
-                        pendingAudioDecoderOutputBufferIndex,
+                    audioExtractedFrameCount, audioExtractorDone,
+                    audioDecodedFrameCount, audioDecoderDone,
+                    audioEncodedFrameCount, audioEncoderDone,
+                    pendingAudioDecoderOutputBufferIndex,
 
-                        muxing, outputVideoTrack, outputAudioTrack));
-            }
+                    muxing, outputVideoTrack, outputAudioTrack
+            ));
 
             // Extract video from file and feed to decoder.
             // Do not extract video if we have determined the output format but we are not yet
@@ -609,7 +624,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
             while (!videoExtractorDone && (encoderOutputVideoFormat == null || muxing)) {
                 int decoderInputBufferIndex = videoDecoder.dequeueInputBuffer(TIMEOUT_USEC);
                 if (decoderInputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                    if (VERBOSE) Log.d(TAG, "no video decoder input buffer");
+                    Log.d(TAG, "no video decoder input buffer");
                     break;
                 }
                 if (VERBOSE) {
@@ -632,7 +647,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 }
                 videoExtractorDone = !videoExtractor.advance();
                 if (videoExtractorDone) {
-                    if (VERBOSE) Log.d(TAG, "video extractor: EOS");
+                    Log.d(TAG, "video extractor: EOS");
                     videoDecoder.queueInputBuffer(
                             decoderInputBufferIndex,
                             0,
@@ -648,10 +663,10 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
             // Extract audio from file and feed to decoder.
             // Do not extract audio if we have determined the output format but we are not yet
             // ready to mux the frames.
-            while (!audioExtractorDone && (encoderOutputAudioFormat == null || muxing)) {
+            while (mCopyAudio && !audioExtractorDone && (encoderOutputAudioFormat == null || muxing)) {
                 int decoderInputBufferIndex = audioDecoder.dequeueInputBuffer(TIMEOUT_USEC);
                 if (decoderInputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                    if (VERBOSE) Log.d(TAG, "no audio decoder input buffer");
+                    Log.d(TAG, "no audio decoder input buffer");
                     break;
                 }
                 if (VERBOSE) {
@@ -674,7 +689,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 }
                 audioExtractorDone = !audioExtractor.advance();
                 if (audioExtractorDone) {
-                    if (VERBOSE) Log.d(TAG, "audio extractor: EOS");
+                    Log.d(TAG, "audio extractor: EOS");
                     audioDecoder.queueInputBuffer(
                             decoderInputBufferIndex,
                             0,
@@ -693,7 +708,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                         videoDecoder.dequeueOutputBuffer(
                                 videoDecoderOutputBufferInfo, TIMEOUT_USEC);
                 if (decoderOutputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                    if (VERBOSE) Log.d(TAG, "no video decoder output buffer");
+                    Log.d(TAG, "no video decoder output buffer");
                     break;
                 }
                 if (decoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
@@ -703,10 +718,8 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 }
                 if (decoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     decoderOutputVideoFormat = videoDecoder.getOutputFormat();
-                    if (VERBOSE) {
-                        Log.d(TAG, "video decoder: output format changed: "
-                                + decoderOutputVideoFormat);
-                    }
+                    Log.d(TAG, "video decoder: output format changed: "
+                            + decoderOutputVideoFormat);
                     break;
                 }
                 if (VERBOSE) {
@@ -754,7 +767,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
 
             // Poll output frames from the audio decoder.
             // Do not poll if we already have a pending buffer to feed to the encoder.
-            while (!audioDecoderDone && pendingAudioDecoderOutputBufferIndex == -1
+            while (mCopyAudio && !audioDecoderDone && pendingAudioDecoderOutputBufferIndex == -1
                     && (encoderOutputAudioFormat == null || muxing)) {
                 int decoderOutputBufferIndex =
                         audioDecoder.dequeueOutputBuffer(
@@ -770,10 +783,8 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 }
                 if (decoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     decoderOutputAudioFormat = audioDecoder.getOutputFormat();
-                    if (VERBOSE) {
-                        Log.d(TAG, "audio decoder: output format changed: "
-                                + decoderOutputAudioFormat);
-                    }
+                    Log.d(TAG, "audio decoder: output format changed: "
+                            + decoderOutputAudioFormat);
                     break;
                 }
                 if (VERBOSE) {
@@ -807,7 +818,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
             }
 
             // Feed the pending decoded audio buffer to the audio encoder.
-            while (pendingAudioDecoderOutputBufferIndex != -1) {
+            while (mCopyAudio && pendingAudioDecoderOutputBufferIndex != -1) {
                 if (VERBOSE) {
                     Log.d(TAG, "audio decoder: attempting to process pending buffer: "
                             + pendingAudioDecoderOutputBufferIndex);
@@ -872,7 +883,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                     break;
                 }
                 if (encoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    if (VERBOSE) Log.d(TAG, "video encoder: output format changed");
+                    Log.d(TAG, "video encoder: output format changed");
                     if (outputVideoTrack >= 0) {
                         fail("video encoder changed its output format again?");
                     }
@@ -915,7 +926,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
             }
 
             // Poll frames from the audio encoder and send them to the muxer.
-            while (!audioEncoderDone && (encoderOutputAudioFormat == null || muxing)) {
+            while (mCopyAudio && !audioEncoderDone && (encoderOutputAudioFormat == null || muxing)) {
                 int encoderOutputBufferIndex = audioEncoder.dequeueOutputBuffer(
                         audioEncoderOutputBufferInfo, TIMEOUT_USEC);
                 if (encoderOutputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
@@ -928,7 +939,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                     break;
                 }
                 if (encoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    if (VERBOSE) Log.d(TAG, "audio encoder: output format changed");
+                    Log.d(TAG, "audio encoder: output format changed");
                     if (outputAudioTrack >= 0) {
                         fail("audio encoder changed its output format again?");
                     }
@@ -976,11 +987,15 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 break;
             }
 
-            if (!muxing && (encoderOutputAudioFormat != null) && (encoderOutputVideoFormat != null)) {
+            if (!muxing && (!mCopyAudio || encoderOutputAudioFormat != null) && (encoderOutputVideoFormat != null)) {
                 Log.d(TAG, "muxer: adding video track.");
                 outputVideoTrack = muxer.addTrack(encoderOutputVideoFormat);
-                Log.d(TAG, "muxer: adding audio track.");
-                outputAudioTrack = muxer.addTrack(encoderOutputAudioFormat);
+
+
+                if (mCopyAudio) {
+                    Log.d(TAG, "muxer: adding audio track.");
+                    outputAudioTrack = muxer.addTrack(encoderOutputAudioFormat);
+                }
                 Log.d(TAG, "muxer: starting");
                 muxer.setOrientationHint(mOrientationHint);
                 muxer.start();
@@ -993,11 +1008,11 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 videoDecodedFrameCount, videoEncodedFrameCount);
         assertTrue("decoded frame count should be less than extracted frame count",
                 videoDecodedFrameCount <= videoExtractedFrameCount);
-        assertEquals("no frame should be pending", -1, pendingAudioDecoderOutputBufferIndex);
 
-        // TODO: check audio frame count?
-
-        Log.d(TAG, String.format("audioDecodedFrameCount: %s audioExtractedFrameCount: %s", audioDecodedFrameCount, audioExtractedFrameCount));
+        if (mCopyAudio) {
+            assertEquals("no frame should be pending", -1, pendingAudioDecoderOutputBufferIndex);
+            Log.d(TAG, String.format("audioDecodedFrameCount: %s audioExtractedFrameCount: %s", audioDecodedFrameCount, audioExtractedFrameCount));
+        }
     }
 
     private static boolean isVideoFormat(MediaFormat format) {

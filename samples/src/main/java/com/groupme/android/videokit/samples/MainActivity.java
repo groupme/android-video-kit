@@ -23,6 +23,7 @@ import android.view.Surface;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.groupme.android.videokit.VideoActivity;
@@ -53,22 +54,25 @@ public class MainActivity extends Activity implements ExtractDecodeEditEncodeMux
     private static final long TIMEOUT_USEC = 10000;
 
     private ProgressDialog mProgressDialog;
+    private TextView mInputFileSize;
+    private TextView mOutputFileSize;
+    private TextView mTimeToEncode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button recordVideo = (Button) findViewById(R.id.btn_record_video);
-        recordVideo.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, VideoActivity.class);
-                intent.setAction(MediaStore.ACTION_VIDEO_CAPTURE);
-                intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 30);
-                startActivityForResult(intent, 1);
-            }
-        });
+//        Button recordVideo = (Button) findViewById(R.id.btn_record_video);
+//        recordVideo.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Intent intent = new Intent(MainActivity.this, VideoActivity.class);
+//                intent.setAction(MediaStore.ACTION_VIDEO_CAPTURE);
+//                intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 30);
+//                startActivityForResult(intent, 1);
+//            }
+//        });
 
         Button testVideoEncode = (Button) findViewById(R.id.btn_encode_video);
         testVideoEncode.setOnClickListener(new View.OnClickListener() {
@@ -79,6 +83,10 @@ public class MainActivity extends Activity implements ExtractDecodeEditEncodeMux
                 startActivityForResult(intent, REQUEST_PICK_VIDEO);
             }
         });
+
+        mInputFileSize = (TextView) findViewById(R.id.input_file_size);
+        mOutputFileSize = (TextView) findViewById(R.id.output_file_size);
+        mTimeToEncode = (TextView) findViewById(R.id.time_to_encode);
     }
 
     private void encodeVideo(final Uri videoUri) {
@@ -512,14 +520,31 @@ public class MainActivity extends Activity implements ExtractDecodeEditEncodeMux
     }
 
     @Override
-    public void onVideoEncoded(String outputFile) {
+    public void onVideoEncoded(final String outputFile, double inputFileSize, double outputFileSize, double timeToEncode) {
         if (mProgressDialog.isShowing()) {
             mProgressDialog.dismiss();
 
-            Intent intent = new Intent(android.content.Intent.ACTION_VIEW);
-            intent.setDataAndType(Uri.fromFile(new File(outputFile)), "video/*");
-            startActivity(intent);
+//            Intent intent = new Intent(android.content.Intent.ACTION_VIEW);
+//            intent.setDataAndType(Uri.fromFile(new File(outputFile)), "video/*");
+//            startActivity(intent);
         }
+
+        mInputFileSize.setText(String.format("Input file: %sMB", inputFileSize));
+        mOutputFileSize.setText(String.format("Output file: %sMB", outputFileSize));
+        mTimeToEncode.setText(String.format("Time to encode: %ss", timeToEncode));
+
+
+        Button playVideo = (Button) findViewById(R.id.btn_play);
+        playVideo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(android.content.Intent.ACTION_VIEW);
+                intent.setDataAndType(Uri.fromFile(new File(outputFile)), "video/*");
+                startActivity(intent);
+
+            }
+        });
+
     }
 
     @Override
