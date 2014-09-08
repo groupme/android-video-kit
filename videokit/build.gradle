@@ -6,7 +6,6 @@ android {
 
     defaultConfig {
         applicationId "com.groupme.android.videokit"
-        minSdkVersion 16
         targetSdkVersion 20
         versionCode 1
         versionName "1.0"
