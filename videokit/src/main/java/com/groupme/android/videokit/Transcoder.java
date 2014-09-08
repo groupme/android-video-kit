@@ -86,6 +86,7 @@ public class Transcoder {
 
     private int mOrientationHint;
     private OnVideoTranscodedListener mListener;
+
     private final Context mContext;
 
     public interface OnVideoTranscodedListener {
@@ -104,6 +105,11 @@ public class Transcoder {
 
     public Transcoder source(Uri videoUri) {
         mSourceVideoUri = videoUri;
+        return this;
+    }
+
+    public Transcoder source(MediaInfo mediaInfo) {
+        mSourceVideoUri = mediaInfo.getMediaUri();
         return this;
     }
 
@@ -185,6 +191,7 @@ public class Transcoder {
         InputSurface inputSurface = null;
 
         try {
+
             videoExtractor = createExtractor();
             int videoInputTrack = getAndSelectVideoTrackIndex(videoExtractor);
 
@@ -437,7 +444,7 @@ public class Transcoder {
      * @param surface into which to decode the frames
      */
     private MediaCodec createVideoDecoder(MediaFormat inputFormat, Surface surface) {
-        MediaCodec decoder = MediaCodec.createDecoderByType(getMimeTypeFor(inputFormat));
+        MediaCodec decoder = MediaCodec.createDecoderByType(MediaInfo.getMimeTypeFor(inputFormat));
         decoder.configure(inputFormat, surface, null, 0);
         decoder.start();
         return decoder;
@@ -471,7 +478,7 @@ public class Transcoder {
      * @param inputFormat the format of the stream to decode
      */
     private MediaCodec createAudioDecoder(MediaFormat inputFormat) {
-        MediaCodec decoder = MediaCodec.createDecoderByType(getMimeTypeFor(inputFormat));
+        MediaCodec decoder = MediaCodec.createDecoderByType(MediaInfo.getMimeTypeFor(inputFormat));
         decoder.configure(inputFormat, null, null, 0);
         decoder.start();
         return decoder;
@@ -503,9 +510,9 @@ public class Transcoder {
         for (int index = 0; index < extractor.getTrackCount(); ++index) {
             if (VERBOSE) {
                 Log.d(TAG, "format for track " + index + " is "
-                        + getMimeTypeFor(extractor.getTrackFormat(index)));
+                        + MediaInfo.getMimeTypeFor(extractor.getTrackFormat(index)));
             }
-            if (isVideoFormat(extractor.getTrackFormat(index))) {
+            if (MediaInfo.isVideoFormat(extractor.getTrackFormat(index))) {
                 extractor.selectTrack(index);
                 return index;
             }
@@ -517,9 +524,9 @@ public class Transcoder {
         for (int index = 0; index < extractor.getTrackCount(); ++index) {
             if (VERBOSE) {
                 Log.d(TAG, "format for track " + index + " is "
-                        + getMimeTypeFor(extractor.getTrackFormat(index)));
+                        + MediaInfo.getMimeTypeFor(extractor.getTrackFormat(index)));
             }
-            if (isAudioFormat(extractor.getTrackFormat(index))) {
+            if (MediaInfo.isAudioFormat(extractor.getTrackFormat(index))) {
                 extractor.selectTrack(index);
                 return index;
             }
@@ -1034,18 +1041,6 @@ public class Transcoder {
 
             Log.d(TAG, String.format("audioDecodedFrameCount: %s audioExtractedFrameCount: %s", audioDecodedFrameCount, audioExtractedFrameCount));
         }
-    }
-
-    private static boolean isVideoFormat(MediaFormat format) {
-        return getMimeTypeFor(format).startsWith("video/");
-    }
-
-    private static boolean isAudioFormat(MediaFormat format) {
-        return getMimeTypeFor(format).startsWith("audio/");
-    }
-
-    private static String getMimeTypeFor(MediaFormat format) {
-        return format.getString(MediaFormat.KEY_MIME);
     }
 
     /**

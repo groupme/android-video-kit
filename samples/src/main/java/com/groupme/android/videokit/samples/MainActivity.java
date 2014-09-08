@@ -10,6 +10,8 @@ import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
+
+import com.groupme.android.videokit.MediaInfo;
 import com.groupme.android.videokit.Transcoder;
 import com.groupme.android.videokit.InputSurface;
 
@@ -28,6 +30,7 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 
@@ -86,23 +89,32 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
         mTimeToEncode = (TextView) findViewById(R.id.time_to_encode);
     }
 
-    private void encodeVideo(final Uri videoUri) {
-        Transcoder.with(this)
-                .source(videoUri)
-                .listener(this)
-                .start(Transcoder.getDefaultOutputFilePath());
-        mProgressDialog = new ProgressDialog(this);
-        mProgressDialog.setIndeterminate(true);
-        mProgressDialog.setCancelable(false);
-        mProgressDialog.setMessage("Encoding Video");
-        mProgressDialog.show();
+    private void encodeVideo(final Uri videoUri) throws IOException {
+        MediaInfo mediaInfo = new MediaInfo(this, videoUri);
+
+        if (mediaInfo.hasVideoTrack()) {
+            Transcoder.with(this)
+                    .source(mediaInfo)
+                    .listener(this)
+                    .start(Transcoder.getDefaultOutputFilePath());
+
+            mProgressDialog = new ProgressDialog(this);
+            mProgressDialog.setIndeterminate(true);
+            mProgressDialog.setCancelable(false);
+            mProgressDialog.setMessage(String.format("Encoding Video.. (%d secs)", mediaInfo.getDuration()));
+            mProgressDialog.show();
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
             case REQUEST_PICK_VIDEO:
-                encodeVideo(data.getData());
+                try {
+                    encodeVideo(data.getData());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 break;
             default:
                 super.onActivityResult(requestCode, resultCode, data);
