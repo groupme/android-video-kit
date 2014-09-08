@@ -9,18 +9,36 @@
     tools:context="com.groupme.android.videokit.samples.MainActivity">
 
     <Button
-        android:id="@+id/btn_record_video"
+        android:id="@+id/btn_encode_video"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Record Video"
+        android:text="Encode Video Test"
         android:layout_centerInParent="true"/>
 
+
+    <TextView
+        android:id="@+id/input_file_size"
+        android:layout_below="@+id/btn_encode_video"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:id="@+id/output_file_size"
+        android:layout_below="@+id/input_file_size"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:id="@+id/time_to_encode"
+        android:layout_below="@+id/output_file_size"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
     <Button
-        android:id="@+id/btn_choose_video"
+        android:id="@+id/btn_play"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/btn_record_video"
-        android:text="Choose Video"
-        android:layout_centerInParent="true"/>
+        android:text="Play Output Video"
+        android:layout_alignParentBottom="true"/>
 
 </RelativeLayout>
