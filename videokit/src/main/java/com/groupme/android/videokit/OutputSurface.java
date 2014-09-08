@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package android.media.cts;
+package com.groupme.android.videokit;
 
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package android.media.cts;
+package com.groupme.android.videokit;
 
 import java.io.File;
 import java.io.FileOutputStream;

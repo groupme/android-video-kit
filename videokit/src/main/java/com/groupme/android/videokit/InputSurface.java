@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package android.media.cts;
+package com.groupme.android.videokit;
 
 import android.opengl.EGL14;
 import android.opengl.EGLExt;

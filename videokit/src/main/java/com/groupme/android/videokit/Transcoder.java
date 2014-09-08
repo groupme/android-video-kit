@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package android.media.cts;
+package com.groupme.android.videokit;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -30,7 +30,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.OpenableColumns;
-import android.test.AndroidTestCase;
 import android.util.Log;
 import android.view.Surface;
 
@@ -53,9 +52,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * MediaMuxer.
  */
 @TargetApi(18)
-public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
+public class Transcoder {
 
-    private static final String TAG = ExtractDecodeEditEncodeMux.class.getSimpleName();
+    private static final String TAG = Transcoder.class.getSimpleName();
     private static final boolean VERBOSE = false; // lots of logging
     private boolean mCopyAudio = true;
 
@@ -77,8 +76,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
     // parameters for the audio encoder
     private static final String OUTPUT_AUDIO_MIME_TYPE = "audio/MP4A-LATM"; // Advanced Audio Coding
     private static final int OUTPUT_AUDIO_BIT_RATE = 128 * 1024;
-    //private static final int OUTPUT_AUDIO_AAC_PROFILE = MediaCodecInfo.CodecProfileLevel.AACObjectERLC; WORKS! on htc m8
-    private static final int OUTPUT_AUDIO_AAC_PROFILE = MediaCodecInfo.CodecProfileLevel.AACObjectERLC;
+    private static final int OUTPUT_AUDIO_AAC_PROFILE = MediaCodecInfo.CodecProfileLevel.AACObjectLC;
 
     /** The uri used as the input file */
     private Uri mSourceVideoUri;
@@ -87,32 +85,35 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
     private String mOutputFile;
 
     private int mOrientationHint;
+    private OnVideoTranscodedListener mListener;
+    private final Context mContext;
 
-    private OnVideoEncodedListener mListener;
-
-    public interface OnVideoEncodedListener {
-        public void onVideoEncoded(String outputFile, double inputFileSize, double outputFileSize, double timeToEncode);
+    public interface OnVideoTranscodedListener {
+        public void onVideoTranscoded(String outputFile, double inputFileSize, double outputFileSize, double timeToEncode);
         public void onError();
     }
 
-    public static ExtractDecodeEditEncodeMux with(Context context) {
-        ExtractDecodeEditEncodeMux videoDecoder = new ExtractDecodeEditEncodeMux();
-        videoDecoder.setContext(context);
+    private Transcoder(Context context) {
+        mContext = context;
+    }
+
+    public static Transcoder with(Context context) {
+        Transcoder videoDecoder = new Transcoder(context);
         return videoDecoder;
     }
 
-    public ExtractDecodeEditEncodeMux source(Uri videoUri) {
+    public Transcoder source(Uri videoUri) {
         mSourceVideoUri = videoUri;
         return this;
     }
 
-    public ExtractDecodeEditEncodeMux listener(OnVideoEncodedListener listener) {
+    public Transcoder listener(OnVideoTranscodedListener listener) {
         mListener = listener;
         return this;
     }
 
-    public void output(String outputFile) {
-        if (getContext() == null) {
+    public void start(String outputFile) {
+        if (mContext == null) {
             throw new IllegalStateException("Context cannot be null");
         }
 
@@ -184,13 +185,17 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
         InputSurface inputSurface = null;
 
         try {
-                videoExtractor = createExtractor();
-                int videoInputTrack = getAndSelectVideoTrackIndex(videoExtractor);
-                assertTrue("missing video track in test video", videoInputTrack != -1);
-                MediaFormat inputFormat = videoExtractor.getTrackFormat(videoInputTrack);
+            videoExtractor = createExtractor();
+            int videoInputTrack = getAndSelectVideoTrackIndex(videoExtractor);
 
-                // We avoid the device-specific limitations on width and height by using values
-                // that are multiples of 16, which all tested devices seem to be able to handle.
+            if (videoInputTrack == -1) {
+                throw new IllegalArgumentException(String.format("No video track found for file: %s", mSourceVideoUri));
+            }
+
+            MediaFormat inputFormat = videoExtractor.getTrackFormat(videoInputTrack);
+
+            // We avoid the device-specific limitations on width and height by using values
+            // that are multiples of 16, which all tested devices seem to be able to handle.
 
             int inputWidth = inputFormat.getInteger(MediaFormat.KEY_WIDTH);
             int inputHeight = inputFormat.getInteger(MediaFormat.KEY_HEIGHT);
@@ -211,44 +216,46 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
 
             mOrientationHint = inputFormat.containsKey(KEY_ROTATION) ? inputFormat.getInteger(KEY_ROTATION) : 0;
 
-                MediaFormat outputVideoFormat =
-                        MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE,
-                                outputWidth,
-                                outputHeight);
+            MediaFormat outputVideoFormat =
+                    MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE,
+                            outputWidth,
+                            outputHeight);
 
-                // Set some properties. Failing to specify some of these can cause the MediaCodec
-                // configure() call to throw an unhelpful exception.
-                outputVideoFormat.setInteger(
-                        MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+            // Set some properties. Failing to specify some of these can cause the MediaCodec
+            // configure() call to throw an unhelpful exception.
+            outputVideoFormat.setInteger(
+                    MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
 
-                MediaCodecInfo.CodecCapabilities capabilities = videoCodecInfo.getCapabilitiesForType(OUTPUT_VIDEO_MIME_TYPE);
+            MediaCodecInfo.CodecCapabilities capabilities = videoCodecInfo.getCapabilitiesForType(OUTPUT_VIDEO_MIME_TYPE);
 
-                for (int i = 0; i < capabilities.profileLevels.length; i++) {
-                    MediaCodecInfo.CodecProfileLevel level = capabilities.profileLevels[i];
-                    Log.e(TAG, String.format("Using codec profile: %d level: %d ", level.profile, level.level));
-                }
+            for (int i = 0; i < capabilities.profileLevels.length; i++) {
+                MediaCodecInfo.CodecProfileLevel level = capabilities.profileLevels[i];
+                Log.e(TAG, String.format("Using codec profile: %d level: %d ", level.profile, level.level));
+            }
 
-                outputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, OUTPUT_VIDEO_BIT_RATE);
-                outputVideoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, OUTPUT_VIDEO_FRAME_RATE);
-                outputVideoFormat.setInteger(
-                        MediaFormat.KEY_I_FRAME_INTERVAL, OUTPUT_VIDEO_IFRAME_INTERVAL);
-                if (VERBOSE) Log.d(TAG, "video format: " + outputVideoFormat);
+            outputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, OUTPUT_VIDEO_BIT_RATE);
+            outputVideoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, OUTPUT_VIDEO_FRAME_RATE);
+            outputVideoFormat.setInteger(
+                    MediaFormat.KEY_I_FRAME_INTERVAL, OUTPUT_VIDEO_IFRAME_INTERVAL);
+            if (VERBOSE) Log.d(TAG, "video format: " + outputVideoFormat);
 
-                // Create a MediaCodec for the desired codec, then configure it as an encoder with
-                // our desired properties. Request a Surface to use for input.
-                AtomicReference<Surface> inputSurfaceReference = new AtomicReference<Surface>();
-                videoEncoder = createVideoEncoder(
-                        videoCodecInfo, outputVideoFormat, inputSurfaceReference);
-                inputSurface = new InputSurface(inputSurfaceReference.get());
-                inputSurface.makeCurrent();
-                // Create a MediaCodec for the decoder, based on the extractor's format.
-                outputSurface = new OutputSurface();
-                videoDecoder = createVideoDecoder(inputFormat, outputSurface.getSurface());
+            // Create a MediaCodec for the desired codec, then configure it as an encoder with
+            // our desired properties. Request a Surface to use for input.
+            AtomicReference<Surface> inputSurfaceReference = new AtomicReference<Surface>();
+            videoEncoder = createVideoEncoder(
+                    videoCodecInfo, outputVideoFormat, inputSurfaceReference);
+            inputSurface = new InputSurface(inputSurfaceReference.get());
+            inputSurface.makeCurrent();
+            // Create a MediaCodec for the decoder, based on the extractor's format.
+            outputSurface = new OutputSurface();
+            videoDecoder = createVideoDecoder(inputFormat, outputSurface.getSurface());
 
-            if (mCopyAudio) {
-                audioExtractor = createExtractor();
-                int audioInputTrack = getAndSelectAudioTrackIndex(audioExtractor);
-                assertTrue("missing audio track in test video", audioInputTrack != -1);
+            audioExtractor = createExtractor();
+            int audioInputTrack = getAndSelectAudioTrackIndex(audioExtractor);
+
+            if (audioInputTrack == -1) {
+                mCopyAudio = false;
+            } else {
                 MediaFormat audioInputFormat = audioExtractor.getTrackFormat(audioInputTrack);
 
                 MediaFormat outputAudioFormat =
@@ -264,7 +271,6 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 // Create a MediaCodec for the decoder, based on the extractor's format.
                 audioDecoder = createAudioDecoder(audioInputFormat);
             }
-
 
             // Creates a muxer but do not start or add tracks just yet.
             muxer = createMuxer();
@@ -390,7 +396,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
         }
 
         Cursor returnCursor =
-                getContext().getContentResolver().query(mSourceVideoUri, null, null, null, null);
+                mContext.getContentResolver().query(mSourceVideoUri, null, null, null, null);
         int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
         returnCursor.moveToFirst();
 
@@ -408,7 +414,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
             @Override
             public void run() {
                 if (mListener != null) {
-                    mListener.onVideoEncoded(mOutputFile, inputFileSize, outputFileSize, timeToEncode);
+                    mListener.onVideoTranscoded(mOutputFile, inputFileSize, outputFileSize, timeToEncode);
                 }
             }
         });
@@ -420,7 +426,7 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
      */
     private MediaExtractor createExtractor() throws IOException {
         MediaExtractor extractor = new MediaExtractor();
-        extractor.setDataSource(getContext(), mSourceVideoUri, null);
+        extractor.setDataSource(mContext, mSourceVideoUri, null);
         return extractor;
     }
 
@@ -885,18 +891,23 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 if (encoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     Log.d(TAG, "video encoder: output format changed");
                     if (outputVideoTrack >= 0) {
-                        fail("video encoder changed its output format again?");
+                        throw new IllegalStateException("Video encoder changed its output format again? What's going on?");
                     }
                     encoderOutputVideoFormat = videoEncoder.getOutputFormat();
                     break;
                 }
-                assertTrue("should have added track before processing output", muxing);
+
+                if (!muxing) {
+                    throw new IllegalStateException("should have added track before processing output");
+                }
+
                 if (VERBOSE) {
                     Log.d(TAG, "video encoder: returned output buffer: "
                             + encoderOutputBufferIndex);
                     Log.d(TAG, "video encoder: returned buffer of size "
                             + videoEncoderOutputBufferInfo.size);
                 }
+
                 ByteBuffer encoderOutputBuffer =
                         videoEncoderOutputBuffers[encoderOutputBufferIndex];
                 if ((videoEncoderOutputBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG)
@@ -941,13 +952,17 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
                 if (encoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     Log.d(TAG, "audio encoder: output format changed");
                     if (outputAudioTrack >= 0) {
-                        fail("audio encoder changed its output format again?");
+                        throw new IllegalStateException("audio encoder changed its output format again?");
                     }
 
                     encoderOutputAudioFormat = audioEncoder.getOutputFormat();
                     break;
                 }
-                assertTrue("should have added track before processing output", muxing);
+
+                if (!muxing) {
+                    throw new IllegalStateException("should have added track before processing output");
+                }
+
                 if (VERBOSE) {
                     Log.d(TAG, "audio encoder: returned output buffer: "
                             + encoderOutputBufferIndex);
@@ -1004,13 +1019,19 @@ public class ExtractDecodeEditEncodeMux extends AndroidTestCase {
         }
 
         // Basic sanity checks.
-        assertEquals("encoded and decoded video frame counts should match",
-                videoDecodedFrameCount, videoEncodedFrameCount);
-        assertTrue("decoded frame count should be less than extracted frame count",
-                videoDecodedFrameCount <= videoExtractedFrameCount);
+        if (videoDecodedFrameCount != videoEncodedFrameCount) {
+            throw new IllegalStateException("encoded and decoded video frame counts should match");
+        }
+
+        if (videoDecodedFrameCount > videoExtractedFrameCount) {
+            throw new IllegalStateException("decoded frame count should be less than extracted frame count");
+        }
 
         if (mCopyAudio) {
-            assertEquals("no frame should be pending", -1, pendingAudioDecoderOutputBufferIndex);
+            if (pendingAudioDecoderOutputBufferIndex != -1) {
+                throw new IllegalStateException("no frame should be pending");
+            }
+
             Log.d(TAG, String.format("audioDecodedFrameCount: %s audioExtractedFrameCount: %s", audioDecodedFrameCount, audioExtractedFrameCount));
         }
     }

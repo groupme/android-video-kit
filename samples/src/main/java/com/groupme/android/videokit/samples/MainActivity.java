@@ -10,23 +10,20 @@ import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
-import android.media.cts.ExtractDecodeEditEncodeMux;
-import android.media.cts.InputSurface;
+import com.groupme.android.videokit.Transcoder;
+import com.groupme.android.videokit.InputSurface;
+
 import android.net.Uri;
 import android.opengl.GLES20;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.MediaStore;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.groupme.android.videokit.VideoActivity;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,7 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
 
-public class MainActivity extends Activity implements ExtractDecodeEditEncodeMux.OnVideoEncodedListener {
+public class MainActivity extends Activity implements Transcoder.OnVideoTranscodedListener {
     private static final int REQUEST_PICK_VIDEO = 0;
 
     // parameters for the video encoder
@@ -90,10 +87,10 @@ public class MainActivity extends Activity implements ExtractDecodeEditEncodeMux
     }
 
     private void encodeVideo(final Uri videoUri) {
-        ExtractDecodeEditEncodeMux.with(this)
+        Transcoder.with(this)
                 .source(videoUri)
                 .listener(this)
-                .output(ExtractDecodeEditEncodeMux.getDefaultOutputFilePath());
+                .start(Transcoder.getDefaultOutputFilePath());
         mProgressDialog = new ProgressDialog(this);
         mProgressDialog.setIndeterminate(true);
         mProgressDialog.setCancelable(false);
@@ -520,7 +517,7 @@ public class MainActivity extends Activity implements ExtractDecodeEditEncodeMux
     }
 
     @Override
-    public void onVideoEncoded(final String outputFile, double inputFileSize, double outputFileSize, double timeToEncode) {
+    public void onVideoTranscoded(final String outputFile, double inputFileSize, double outputFileSize, double timeToEncode) {
         if (mProgressDialog.isShowing()) {
             mProgressDialog.dismiss();
 
