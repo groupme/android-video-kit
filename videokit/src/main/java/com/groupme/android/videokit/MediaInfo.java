@@ -11,6 +11,8 @@ import java.util.concurrent.TimeUnit;
 
 @TargetApi(16)
 public class MediaInfo {
+    public static int VALUE_NOT_AVAILABLE = -1;
+
     private final Context mContext;
     private final Uri mMediaUri;
 
@@ -70,6 +72,38 @@ public class MediaInfo {
         }
 
         return duration;
+    }
+
+    public int getVideoBitRate() {
+        if (hasVideoTrack()) {
+            return mVideoTrackFormat.getInteger(MediaFormat.KEY_BIT_RATE);
+        }
+
+        return VALUE_NOT_AVAILABLE;
+    }
+
+    public int getAudioBitRate() {
+        if (hasAudioTrack()) {
+            return mAudioTrackFormat.getInteger(MediaFormat.KEY_BIT_RATE);
+        }
+
+        return VALUE_NOT_AVAILABLE;
+    }
+
+    public int getVideoWidth() {
+        if (hasVideoTrack()) {
+            return mVideoTrackFormat.getInteger(MediaFormat.KEY_WIDTH);
+        }
+
+        return VALUE_NOT_AVAILABLE;
+    }
+
+    public int getVideoHeight() {
+        if (hasVideoTrack()) {
+            return mVideoTrackFormat.getInteger(MediaFormat.KEY_HEIGHT);
+        }
+
+        return VALUE_NOT_AVAILABLE;
     }
 
     Uri getMediaUri() {
