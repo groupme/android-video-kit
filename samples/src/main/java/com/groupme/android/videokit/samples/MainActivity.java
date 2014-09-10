@@ -14,6 +14,7 @@ import android.media.MediaMuxer;
 import com.groupme.android.videokit.MediaInfo;
 import com.groupme.android.videokit.Transcoder;
 import com.groupme.android.videokit.InputSurface;
+import com.groupme.android.videokit.TrimmerActivity;
 
 import android.net.Uri;
 import android.opengl.GLES20;
@@ -30,12 +31,12 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 
 public class MainActivity extends Activity implements Transcoder.OnVideoTranscodedListener {
     private static final int REQUEST_PICK_VIDEO = 0;
+    private static final int REQUEST_PICK_VIDE_FOR_TRIM = 1;
 
     // parameters for the video encoder
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
@@ -63,17 +64,6 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-//        Button recordVideo = (Button) findViewById(R.id.btn_record_video);
-//        recordVideo.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                Intent intent = new Intent(MainActivity.this, VideoActivity.class);
-//                intent.setAction(MediaStore.ACTION_VIDEO_CAPTURE);
-//                intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 30);
-//                startActivityForResult(intent, 1);
-//            }
-//        });
-
         Button testVideoEncode = (Button) findViewById(R.id.btn_encode_video);
         testVideoEncode.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -81,6 +71,16 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.setType("video/*");
                 startActivityForResult(intent, REQUEST_PICK_VIDEO);
+            }
+        });
+
+        Button testVideoTrim = (Button) findViewById(R.id.btn_trim_video);
+        testVideoTrim.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("video/*");
+                startActivityForResult(intent, REQUEST_PICK_VIDE_FOR_TRIM);
             }
         });
 
@@ -114,6 +114,13 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
                     encodeVideo(data.getData());
                 } catch (IOException e) {
                     e.printStackTrace();
+                }
+                break;
+            case REQUEST_PICK_VIDE_FOR_TRIM:
+                if (resultCode == Activity.RESULT_OK) {
+                    Intent i = new Intent(this, TrimmerActivity.class);
+                    i.setData(data.getData());
+                    startActivity(i);
                 }
                 break;
             default:
