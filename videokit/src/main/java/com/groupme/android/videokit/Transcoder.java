@@ -17,6 +17,7 @@
 package com.groupme.android.videokit;
 
 import android.annotation.TargetApi;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
 import android.media.MediaCodec;
@@ -29,6 +30,7 @@ import android.net.Uri;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.Surface;
@@ -84,6 +86,8 @@ public class Transcoder {
     /** The destination file for the encoded output. */
     private String mOutputFile;
 
+    private long mStartTime;
+
     private int mOrientationHint;
     private OnVideoTranscodedListener mListener;
 
@@ -127,12 +131,14 @@ public class Transcoder {
             throw new IllegalStateException("Source Uri cannot be null. Make sure to call source()");
         }
 
+        mStartTime = System.currentTimeMillis();
         mOutputFile = outputFile;
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     extractDecodeEditEncodeMux();
+                    notifyListener();
                 } catch (Exception e) {
                     e.printStackTrace();
                     new Handler(Looper.getMainLooper()).post(new Runnable() {
@@ -148,6 +154,27 @@ public class Transcoder {
         }).start();
     }
 
+    public boolean startSync(String outputFile) {
+        if (mContext == null) {
+            throw new IllegalStateException("Context cannot be null");
+        }
+
+        if (mSourceVideoUri == null) {
+            throw new IllegalStateException("Source Uri cannot be null. Make sure to call source()");
+        }
+
+        mStartTime = System.currentTimeMillis();
+        mOutputFile = outputFile;
+
+        try {
+            extractDecodeEditEncodeMux();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public static String getDefaultOutputFilePath() {
         return OUTPUT_FILENAME_DIR.getAbsolutePath() + "/output.mp4";
     }
@@ -159,7 +186,6 @@ public class Transcoder {
      * with MediaCodec and do some simple checks.
      */
     private void extractDecodeEditEncodeMux() throws Exception {
-        long mStartTime = System.currentTimeMillis();
         // Exception that may be thrown during release.
         Exception exception = null;
 
@@ -401,21 +427,29 @@ public class Transcoder {
         if (exception != null) {
             throw exception;
         }
+    }
 
-        Cursor returnCursor =
-                mContext.getContentResolver().query(mSourceVideoUri, null, null, null, null);
-        int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
-        returnCursor.moveToFirst();
+    private void notifyListener() {
+        final double inputFileSize;
 
-        final double inputFileSize = Math.round(returnCursor.getLong(sizeIndex) / 1024. / 1000 * 10) / 10.;
+        if (mSourceVideoUri.getScheme().equals(ContentResolver.SCHEME_FILE)) {
+            inputFileSize = Math.round(new File(mSourceVideoUri.getPath()).length() / 1024. / 1000 * 10) / 10.;
+        } else {
+            Cursor returnCursor =
+                    mContext.getContentResolver().query(mSourceVideoUri, null, null, null, null);
+            int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
+            returnCursor.moveToFirst();
+
+            inputFileSize = Math.round(returnCursor.getLong(sizeIndex) / 1024. / 1000 * 10) / 10.;
+            returnCursor.close();
+        }
+
         final double outputFileSize = Math.round(new File(mOutputFile).length() / 1024. / 1000 * 10) / 10.;
         final double timeToEncode = Math.round(((System.currentTimeMillis() - mStartTime) / 1000.) * 10) / 10.;
 
         Log.d(TAG, String.format("Input file: %sMB", inputFileSize));
         Log.d(TAG, String.format("Output file: %sMB", outputFileSize));
         Log.d(TAG, String.format("Time to encode: %ss", timeToEncode));
-        returnCursor.close();
-
 
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
@@ -425,7 +459,6 @@ public class Transcoder {
                 }
             }
         });
-
     }
 
     /**
