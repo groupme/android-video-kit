@@ -232,11 +232,9 @@ public class Transcoder {
 
             int inputWidth = inputFormat.getInteger(MediaFormat.KEY_WIDTH);
             int inputHeight = inputFormat.getInteger(MediaFormat.KEY_HEIGHT);
-            int inputVideoBitRate = inputFormat.getInteger(MediaFormat.KEY_BIT_RATE);
 
             int outputHeight;
             int outputWidth;
-            int outputVideoBitrate;
 
             if (inputWidth >= inputHeight) {
                 float ratio = Math.min(OUTPUT_MAX_WIDTH / inputWidth, OUTPUT_MAX_HEIGHT / inputHeight);
@@ -248,7 +246,6 @@ public class Transcoder {
                 outputWidth = (int) (ratio * inputHeight);
             }
 
-            outputVideoBitrate = Math.min(OUTPUT_VIDEO_BIT_RATE, inputVideoBitRate);
             mOrientationHint = inputFormat.containsKey(KEY_ROTATION) ? inputFormat.getInteger(KEY_ROTATION) : 0;
 
             MediaFormat outputVideoFormat =
@@ -268,7 +265,7 @@ public class Transcoder {
                 Log.e(TAG, String.format("Using codec profile: %d level: %d ", level.profile, level.level));
             }
 
-            outputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, outputVideoBitrate);
+            outputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, OUTPUT_VIDEO_BIT_RATE);
             outputVideoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, OUTPUT_VIDEO_FRAME_RATE);
             outputVideoFormat.setInteger(
                     MediaFormat.KEY_I_FRAME_INTERVAL, OUTPUT_VIDEO_IFRAME_INTERVAL);
