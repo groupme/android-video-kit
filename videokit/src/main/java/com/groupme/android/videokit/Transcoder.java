@@ -30,7 +30,6 @@ import android.net.Uri;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.Surface;
@@ -92,6 +91,9 @@ public class Transcoder {
     private OnVideoTranscodedListener mListener;
 
     private final Context mContext;
+    private double mOutputFileSize;
+    private double mTimeToEncode;
+    private double mInputFileSize;
 
     public interface OnVideoTranscodedListener {
         public void onVideoTranscoded(String outputFile, double inputFileSize, double outputFileSize, double timeToEncode);
@@ -426,35 +428,37 @@ public class Transcoder {
         if (exception != null) {
             throw exception;
         }
+
+        logResults();
     }
 
-    private void notifyListener() {
-        final double inputFileSize;
-
+    private void logResults() {
         if (mSourceVideoUri.getScheme().equals(ContentResolver.SCHEME_FILE)) {
-            inputFileSize = Math.round(new File(mSourceVideoUri.getPath()).length() / 1024. / 1000 * 10) / 10.;
+            mInputFileSize = Math.round(new File(mSourceVideoUri.getPath()).length() / 1024. / 1000 * 10) / 10.;
         } else {
             Cursor returnCursor =
                     mContext.getContentResolver().query(mSourceVideoUri, null, null, null, null);
             int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
             returnCursor.moveToFirst();
 
-            inputFileSize = Math.round(returnCursor.getLong(sizeIndex) / 1024. / 1000 * 10) / 10.;
+            mInputFileSize = Math.round(returnCursor.getLong(sizeIndex) / 1024. / 1000 * 10) / 10.;
             returnCursor.close();
         }
 
-        final double outputFileSize = Math.round(new File(mOutputFile).length() / 1024. / 1000 * 10) / 10.;
-        final double timeToEncode = Math.round(((System.currentTimeMillis() - mStartTime) / 1000.) * 10) / 10.;
+        mOutputFileSize = Math.round(new File(mOutputFile).length() / 1024. / 1000 * 10) / 10.;
+        mTimeToEncode = Math.round(((System.currentTimeMillis() - mStartTime) / 1000.) * 10) / 10.;
 
-        Log.d(TAG, String.format("Input file: %sMB", inputFileSize));
-        Log.d(TAG, String.format("Output file: %sMB", outputFileSize));
-        Log.d(TAG, String.format("Time to encode: %ss", timeToEncode));
+        Log.d(TAG, String.format("Input file: %sMB", mInputFileSize));
+        Log.d(TAG, String.format("Output file: %sMB", mOutputFileSize));
+        Log.d(TAG, String.format("Time to encode: %ss", mTimeToEncode));
+    }
 
+    private void notifyListener() {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
                 if (mListener != null) {
-                    mListener.onVideoTranscoded(mOutputFile, inputFileSize, outputFileSize, timeToEncode);
+                    mListener.onVideoTranscoded(mOutputFile, mInputFileSize, mOutputFileSize, mTimeToEncode);
                 }
             }
         });
@@ -635,33 +639,35 @@ public class Transcoder {
         long previousPresentationTime = 0L;
 
         while (!videoEncoderDone || (mCopyAudio && !audioEncoderDone)) {
-            Log.d(TAG, String.format(
-                    "loop: "
+            if (VERBOSE) {
+                Log.d(TAG, String.format(
+                        "loop: "
 
-                            + "V {"
-                            + "extracted:%d(done:%b) "
-                            + "decoded:%d(done:%b) "
-                            + "encoded:%d(done:%b)} "
+                                + "V {"
+                                + "extracted:%d(done:%b) "
+                                + "decoded:%d(done:%b) "
+                                + "encoded:%d(done:%b)} "
 
-                            + "A {"
-                            + "extracted:%d(done:%b) "
-                            + "decoded:%d(done:%b) "
-                            + "encoded:%d(done:%b) "
-                            + "pending:%d} "
+                                + "A {"
+                                + "extracted:%d(done:%b) "
+                                + "decoded:%d(done:%b) "
+                                + "encoded:%d(done:%b) "
+                                + "pending:%d} "
 
-                            + "muxing:%b(V:%d,A:%d)",
+                                + "muxing:%b(V:%d,A:%d)",
 
-                    videoExtractedFrameCount, videoExtractorDone,
-                    videoDecodedFrameCount, videoDecoderDone,
-                    videoEncodedFrameCount, videoEncoderDone,
+                        videoExtractedFrameCount, videoExtractorDone,
+                        videoDecodedFrameCount, videoDecoderDone,
+                        videoEncodedFrameCount, videoEncoderDone,
 
-                    audioExtractedFrameCount, audioExtractorDone,
-                    audioDecodedFrameCount, audioDecoderDone,
-                    audioEncodedFrameCount, audioEncoderDone,
-                    pendingAudioDecoderOutputBufferIndex,
+                        audioExtractedFrameCount, audioExtractorDone,
+                        audioDecodedFrameCount, audioDecoderDone,
+                        audioEncodedFrameCount, audioEncoderDone,
+                        pendingAudioDecoderOutputBufferIndex,
 
-                    muxing, outputVideoTrack, outputAudioTrack
-            ));
+                        muxing, outputVideoTrack, outputAudioTrack
+                ));
+            }
 
             // Extract video from file and feed to decoder.
             // Do not extract video if we have determined the output format but we are not yet
@@ -1071,7 +1077,9 @@ public class Transcoder {
                 throw new IllegalStateException("no frame should be pending");
             }
 
-            Log.d(TAG, String.format("audioDecodedFrameCount: %s audioExtractedFrameCount: %s", audioDecodedFrameCount, audioExtractedFrameCount));
+            if (VERBOSE) {
+                Log.d(TAG, String.format("audioDecodedFrameCount: %s audioExtractedFrameCount: %s", audioDecodedFrameCount, audioExtractedFrameCount));
+            }
         }
     }
 
