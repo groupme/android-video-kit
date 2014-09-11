@@ -25,6 +25,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaMuxer;
 import android.net.Uri;
 import android.os.Environment;
@@ -32,6 +33,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
 
@@ -246,7 +248,16 @@ public class Transcoder {
                 outputWidth = (int) (ratio * inputHeight);
             }
 
-            mOrientationHint = inputFormat.containsKey(KEY_ROTATION) ? inputFormat.getInteger(KEY_ROTATION) : 0;
+            if (inputFormat.containsKey(KEY_ROTATION)) {
+                mOrientationHint = inputFormat.getInteger(KEY_ROTATION);
+            } else {
+                MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                retriever.setDataSource(mContext, mSourceVideoUri);
+                String orientation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
+                if (!TextUtils.isEmpty(orientation)) {
+                    mOrientationHint = Integer.parseInt(orientation);
+                }
+            }
 
             MediaFormat outputVideoFormat =
                     MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE,
