@@ -26,10 +26,8 @@ public class TrimmerActivity extends Activity {
         mFilmRollView = (FilmRollView) findViewById(R.id.film_roll);
         mFilmRollView.setVideoUri(mVideoUri);
         mVideoView.setVideoURI(mVideoUri);
-        mController = new MediaController(this, false);
 
-        mVideoView.setMediaController(mController);
-        mController.setAnchorView(mVideoView);
+        mFilmRollView.setMediaPlayer(mVideoView);
         mVideoView.seekTo(1);
     }
 }

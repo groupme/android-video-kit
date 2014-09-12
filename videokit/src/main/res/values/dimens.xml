@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="film_roll_height">50dp</dimen>
+    <dimen name="handle_width">15dp</dimen>
+    <dimen name="play_bar_height">50dp</dimen>
+</resources>
