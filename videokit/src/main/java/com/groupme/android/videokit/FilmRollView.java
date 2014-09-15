@@ -12,6 +12,8 @@ import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -27,6 +29,7 @@ public class FilmRollView extends View {
     private static final Object KEY_FRAME = "frame";
     private static final String KEY_FRAME_COUNT = "frame_count";
     private static final String KEY_INSTANCE_STATE = "instance_state";
+    private static final int SHOW_PROGRESS = 1;
     private static Paint sBitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private static Paint sThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static Paint sWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -34,13 +37,13 @@ public class FilmRollView extends View {
     private float mDownMotionX;
     private Thumb mPressedThumb;
     private boolean mIsDragging;
-    private OnRangeSeekBarChangeListener listener;
     private float mScaledTouchSlop;
     private boolean notifyWhileDragging;
     private MediaController.MediaPlayerControl mPlayer;
     // The maximum duration of the final, trimmed video
     private int mMaxDuration = 15;
     private boolean mFirstPass = true;
+    private float mSeekBarPosition;
 
     /**
      * Callback listener interface to notify about changed range values.
@@ -59,7 +62,6 @@ public class FilmRollView extends View {
     }
 
     private ArrayList<Bitmap> mBitmaps = new ArrayList<Bitmap>();
-    private Uri mVideoUri;
     private MediaMetadataRetriever mMetaDataExtractor;
     private Rect mRectangle = new Rect(0, 0, 0, 0);
     private int mScaledFrameWidth;
@@ -74,8 +76,6 @@ public class FilmRollView extends View {
     private double mNormalizedMaxValue = 1d;
     private final Bitmap mPlayButton = BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_media_play);
     private final Bitmap mPauseButton = BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_media_pause);
-    private boolean mIsPlaying;
-
 
     public FilmRollView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -91,7 +91,6 @@ public class FilmRollView extends View {
     }
 
     public void setVideoUri(Uri uri) {
-        mVideoUri = uri;
         mMetaDataExtractor = new MediaMetadataRetriever();
 
         if (uri.getScheme().equals(ContentResolver.SCHEME_FILE)) {
@@ -138,6 +137,21 @@ public class FilmRollView extends View {
         }
     };
 
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case SHOW_PROGRESS:
+                    if (mPlayer.isPlaying()) {
+                        invalidate();
+                        msg = obtainMessage(SHOW_PROGRESS);
+                        sendMessageDelayed(msg, 250);
+                    }
+                    break;
+            }
+        }
+    };
+
     private int getFilmRollHeight() {
         return getResources().getDimensionPixelSize(R.dimen.film_roll_height);
     }
@@ -163,20 +177,24 @@ public class FilmRollView extends View {
                 horizontalOffset += mScaledFrameWidth;
             }
 
+            drawSeek(canvas);
+
             // draw minimum thumb
             drawThumb(normalizedToScreen(mNormalizedMinValue), Thumb.MIN.equals(mPressedThumb), canvas);
 
             // draw maximum thumb
-            if (mFirstPass) {
-                double maxValue = (mMaxDuration * 1000d / mPlayer.getDuration() + mNormalizedMinValue);
-                drawThumb(normalizedToScreen(maxValue), Thumb.MAX.equals(mPressedThumb), canvas);
+            if (mFirstPass && mPlayer.getDuration() != -1) {
+                mNormalizedMaxValue = (mMaxDuration * 1000d / mPlayer.getDuration() + mNormalizedMinValue);
                 mFirstPass = false;
-            } else {
-                drawThumb(normalizedToScreen(mNormalizedMaxValue), Thumb.MAX.equals(mPressedThumb), canvas);
             }
 
+            drawThumb(normalizedToScreen(mNormalizedMaxValue), Thumb.MAX.equals(mPressedThumb), canvas);
             drawPlayBar(canvas);
         }
+    }
+
+    private int normalizedValueToTime(double normalizedValue) {
+        return (int) (normalizedValue * mPlayer.getDuration());
     }
 
     /**
@@ -193,12 +211,26 @@ public class FilmRollView extends View {
         canvas.drawRect(screenCoord - mThumbHalfWidth, 0, screenCoord + mThumbHalfWidth, getFilmRollHeight(), sThumbPaint);
     }
 
+    private void drawSeek(Canvas canvas) {
+        if (!mIsDragging) {
+            mSeekBarPosition = (float) mPlayer.getCurrentPosition() / (float) mPlayer.getDuration() * getWidth();
+        }
+
+        if (mPlayer.getCurrentPosition() >= normalizedValueToTime(mNormalizedMaxValue) && mPlayer.isPlaying()) {
+            mPlayer.pause();
+        }
+
+        if (mIsDragging || mSeekBarPosition + mThumbHalfWidth < normalizedToScreen(mNormalizedMaxValue) - mThumbHalfWidth) {
+            canvas.drawRect(mSeekBarPosition - mThumbHalfWidth, 0, mSeekBarPosition + mThumbHalfWidth, getFilmRollHeight(), sWhitePaint);
+        }
+    }
+
     private void drawPlayBar(Canvas canvas) {
         canvas.drawRect(0, getHeight() - mPlayBarHeight, getWidth(), getHeight(), sWhitePaint);
         int left = (getWidth() - mPlayButton.getWidth()) / 2;
         float top = getHeight() - mPlayBarHeight / 2 - mPlayButton.getScaledHeight(canvas) / 2;
 
-        if (mIsPlaying) {
+        if (mPlayer.isPlaying()) {
             canvas.drawBitmap(mPauseButton, left, top, sBitmapPaint);
         } else {
             canvas.drawBitmap(mPlayButton, left, top, sBitmapPaint);
@@ -236,7 +268,7 @@ public class FilmRollView extends View {
                 pointerIndex = event.findPointerIndex(mActivePointerId);
                 mDownMotionX = event.getX(pointerIndex);
 
-                mPressedThumb = evalPressedThumb(mDownMotionX);
+                mPressedThumb = evalPressedThumb(mDownMotionX, event.getY(pointerIndex));
 
                 // Only handle thumb presses.
                 if (mPressedThumb == null)
@@ -268,10 +300,6 @@ public class FilmRollView extends View {
                             attemptClaimDrag();
                         }
                     }
-
-                    if (notifyWhileDragging && listener != null) {
-                        listener.onRangeSeekBarValuesChanged(this, mNormalizedMinValue, mNormalizedMaxValue);
-                    }
                 }
                 break;
             case MotionEvent.ACTION_UP:
@@ -279,8 +307,7 @@ public class FilmRollView extends View {
                     trackTouchEvent(event);
                     onStopTrackingTouch();
                     setPressed(false);
-                }
-                else {
+                } else {
                     // Touch up when we never crossed the touch slop threshold
                     // should be interpreted as a tap-seek to that location.
                     onStartTrackingTouch();
@@ -288,30 +315,32 @@ public class FilmRollView extends View {
                     onStopTrackingTouch();
 
                     if (playBarTouched(event)) {
-                        if (mIsPlaying) {
-                            mIsPlaying = false;
+                        if (mPlayer.isPlaying()) {
                             mPlayer.pause();
                         } else {
-                            mIsPlaying = true;
+                            if (mSeekBarPosition > normalizedToScreen(mNormalizedMinValue)) {
+                                mPlayer.seekTo((int) (mSeekBarPosition / getWidth() * mPlayer.getDuration()));
+                            }
+
+                            if (mPlayer.getCurrentPosition() >= normalizedValueToTime(mNormalizedMaxValue)) {
+                                mPlayer.seekTo(normalizedValueToTime(mNormalizedMinValue));
+                            }
+
                             mPlayer.start();
+                            mHandler.sendEmptyMessage(SHOW_PROGRESS);
                         }
                     }
                 }
 
                 mPressedThumb = null;
                 invalidate();
-                if (listener != null) {
-                    listener.onRangeSeekBarValuesChanged(this, mNormalizedMinValue, mNormalizedMaxValue);
-                }
                 break;
-            case MotionEvent.ACTION_POINTER_DOWN: {
+            case MotionEvent.ACTION_POINTER_DOWN:
                 final int index = event.getPointerCount() - 1;
-                // final int index = ev.getActionIndex();
                 mDownMotionX = event.getX(index);
                 mActivePointerId = event.getPointerId(index);
                 invalidate();
                 break;
-            }
             case MotionEvent.ACTION_CANCEL:
                 if (mIsDragging) {
                     onStopTrackingTouch();
@@ -329,13 +358,17 @@ public class FilmRollView extends View {
 
     private final void trackTouchEvent(MotionEvent event) {
         final int pointerIndex = event.findPointerIndex(mActivePointerId);
-        final float x = event.getX(pointerIndex);
+        try {
+            final float x = event.getX(pointerIndex);
 
-        if (Thumb.MIN.equals(mPressedThumb)) {
-            setNormalizedMinValue(screenToNormalized(x));
-        }
-        else if (Thumb.MAX.equals(mPressedThumb)) {
-            setNormalizedMaxValue(screenToNormalized(x));
+            if (Thumb.MIN.equals(mPressedThumb)) {
+                setNormalizedMinValue(screenToNormalized(x));
+            }
+            else if (Thumb.MAX.equals(mPressedThumb)) {
+                setNormalizedMaxValue(screenToNormalized(x));
+            }
+        } catch (IllegalArgumentException e) {
+         // Ignore pointerIndex out of range
         }
     }
 
@@ -346,8 +379,13 @@ public class FilmRollView extends View {
      *            The x-coordinate of a touch event in screen space.
      * @return The pressed thumb or null if none has been touched.
      */
-    private Thumb evalPressedThumb(float touchX) {
+    private Thumb evalPressedThumb(float touchX, float touchY) {
         Thumb result = null;
+
+        if (touchY > getFilmRollHeight()) {
+            return null;
+        }
+
         boolean minThumbPressed = isInThumbRange(touchX, mNormalizedMinValue);
         boolean maxThumbPressed = isInThumbRange(touchX, mNormalizedMaxValue);
         if (minThumbPressed && maxThumbPressed) {
