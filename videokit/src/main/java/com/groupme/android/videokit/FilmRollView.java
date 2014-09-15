@@ -388,16 +388,14 @@ public class FilmRollView extends View {
 
         boolean minThumbPressed = isInThumbRange(touchX, mNormalizedMinValue);
         boolean maxThumbPressed = isInThumbRange(touchX, mNormalizedMaxValue);
-        if (minThumbPressed && maxThumbPressed) {
-            // if both thumbs are pressed (they lie on top of each other), choose the one with more room to drag. this avoids "stalling" the thumbs in a corner, not being able to drag them apart anymore.
-            result = (touchX / getWidth() > 0.5f) ? Thumb.MIN : Thumb.MAX;
-        }
-        else if (minThumbPressed) {
+
+        if (minThumbPressed) {
             result = Thumb.MIN;
         }
         else if (maxThumbPressed) {
             result = Thumb.MAX;
         }
+
         return result;
     }
 
@@ -411,7 +409,7 @@ public class FilmRollView extends View {
      * @return true if x-coordinate is in thumb range, false otherwise.
      */
     private boolean isInThumbRange(float touchX, double normalizedThumbValue) {
-        return Math.abs(touchX - normalizedToScreen(normalizedThumbValue)) <= mThumbHalfWidth;
+        return Math.abs(touchX - normalizedToScreen(normalizedThumbValue)) <= mThumbHalfWidth * 3;
     }
 
     /**
@@ -421,7 +419,8 @@ public class FilmRollView extends View {
      *            The new normalized min value to set.
      */
     public void setNormalizedMinValue(double value) {
-        mNormalizedMinValue = Math.max(0d, Math.min(1d, Math.min(value, mNormalizedMaxValue)));
+        float maxScreenCoord = normalizedToScreen(mNormalizedMaxValue) - mThumbWidth * 2;
+        mNormalizedMinValue = Math.max(0d, Math.min(1d, Math.min(value, screenToNormalized(maxScreenCoord))));
         updatePlayerPreview(mNormalizedMinValue);
 
         if ((mNormalizedMaxValue - mNormalizedMinValue) * mPlayer.getDuration() / 1000d > mMaxDuration) {
@@ -434,11 +433,11 @@ public class FilmRollView extends View {
     /**
      * Sets normalized max value to value so that 0 <= normalized min value <= value <= 1. The View will get invalidated when calling this method.
      *
-     * @param value
-     *            The new normalized max value to set.
+     * @param value The new normalized max value to set.
      */
     public void setNormalizedMaxValue(double value) {
-        mNormalizedMaxValue = Math.max(0d, Math.min(1d, Math.max(value, mNormalizedMinValue)));
+        float minScreenCoord = normalizedToScreen(mNormalizedMinValue) + mThumbWidth * 2;
+        mNormalizedMaxValue = Math.max(0d, Math.min(1d, Math.max(value, screenToNormalized(minScreenCoord))));
         updatePlayerPreview(mNormalizedMaxValue);
 
         if ((mNormalizedMaxValue - mNormalizedMinValue) * mPlayer.getDuration() / 1000d > mMaxDuration) {
