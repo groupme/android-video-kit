@@ -158,7 +158,7 @@ public class Transcoder {
         }).start();
     }
 
-    public boolean startSync(String outputFile) {
+    public void startSync(String outputFile) throws Exception {
         if (mContext == null) {
             throw new IllegalStateException("Context cannot be null");
         }
@@ -170,13 +170,7 @@ public class Transcoder {
         mStartTime = System.currentTimeMillis();
         mOutputFile = outputFile;
 
-        try {
-            extractDecodeEditEncodeMux();
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
+        extractDecodeEditEncodeMux();
     }
 
     public static String getDefaultOutputFilePath() {
