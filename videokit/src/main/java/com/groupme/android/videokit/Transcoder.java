@@ -36,6 +36,10 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
 
+import com.groupme.android.videokit.support.InputSurface;
+import com.groupme.android.videokit.support.OutputSurface;
+import com.groupme.android.videokit.util.MediaInfo;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
