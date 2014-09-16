@@ -35,6 +35,7 @@ public class FilmRollView extends View {
     private static Paint sWhite75Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static Paint sWhitePaint = new Paint();
     private static Paint sLinePaint = new Paint();
+    private static Paint sBackgroundPaint = new Paint();
     private final int mLineWidth;
     private int mActivePointerId;
     private float mDownMotionX;
@@ -75,7 +76,7 @@ public class FilmRollView extends View {
 
     private final float mThumbWidth = getResources().getDimensionPixelSize(R.dimen.handle_width);
     private final float mThumbHalfWidth = 0.5f * mThumbWidth;
-    private final float mPadding = mThumbHalfWidth;
+    private final int mPadding = (int) mThumbHalfWidth * 3;
     private final float mPlayBarHeight = getResources().getDimensionPixelSize(R.dimen.play_bar_height);
     private double mNormalizedMinValue = 0d;
     private double mNormalizedMaxValue = 1d;
@@ -91,6 +92,7 @@ public class FilmRollView extends View {
         mLineWidth = getResources().getDimensionPixelSize(R.dimen.line_height);
         sLinePaint.setStrokeWidth(mLineWidth);
         sLinePaint.setColor(getResources().getColor(R.color.gold));
+        sBackgroundPaint.setColor(getResources().getColor(R.color.black85));
 
         mScaledTouchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         setClickable(true);
@@ -129,7 +131,7 @@ public class FilmRollView extends View {
                             MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT :
                             MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
             mScaledFrameWidth = (int) (getFilmRollHeight() * frameWidth / frameHeight);
-            mFrameCount = (int) ((float) getWidth() / mScaledFrameWidth);
+            mFrameCount = (int) ((float) getFilmRollWidth() / mScaledFrameWidth);
             // The time between frames in micro-seconds
             int timeBetweenFrames = (int) (duration / mFrameCount) * 1000;
             int timeOffset = 0;
@@ -169,6 +171,10 @@ public class FilmRollView extends View {
         return getResources().getDimensionPixelSize(R.dimen.film_roll_height);
     }
 
+    private int getFilmRollWidth() {
+        return getWidth() - 2 * mPadding;
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -178,22 +184,15 @@ public class FilmRollView extends View {
             new Thread(mFrameRetriever).start();
         }
 
+        drawFrame(canvas);
+
         if (mMetaDataExtractor != null) {
-            int horizontalOffset = 0;
+            canvas.save();
+            canvas.translate(mPadding, 0);
 
-            for (Bitmap bitmap : mBitmaps) {
-                if (bitmap != null) {
-                    mRectangle.set(horizontalOffset, 0, mScaledFrameWidth + horizontalOffset, getFilmRollHeight());
-                    canvas.drawBitmap(bitmap, null, mRectangle, sBitmapPaint);
-                }
-
-                horizontalOffset += mScaledFrameWidth;
-            }
-
-            drawSeekBar(canvas);
-
+            drawBitmaps(canvas);
             // draw minimum thumb
-            drawLeftThumb(normalizedToScreen(mNormalizedMinValue), canvas);
+            drawLeftThumb(mNormalizedMinValue, canvas);
 
             // draw maximum thumb
             if (mFirstPass && mPlayer.getDuration() != -1) {
@@ -201,7 +200,10 @@ public class FilmRollView extends View {
                 mFirstPass = false;
             }
 
-            drawRightThumb(normalizedToScreen(mNormalizedMaxValue), canvas);
+            drawRightThumb(mNormalizedMaxValue, canvas);
+            drawSeekBar(canvas);
+            canvas.restore();
+
             drawPlayBar(canvas);
         }
     }
@@ -210,16 +212,38 @@ public class FilmRollView extends View {
         return (int) (normalizedValue * mPlayer.getDuration());
     }
 
-    private void drawLeftThumb(float screenCoord, Canvas canvas) {
-        canvas.drawRect(0, 0, screenCoord - mThumbHalfWidth, getFilmRollHeight(), sWhite75Paint);
-        canvas.drawRect(screenCoord - mThumbHalfWidth, 0, screenCoord + mThumbHalfWidth, getFilmRollHeight(), sThumbPaint);
+    private void drawFrame(Canvas canvas) {
+        canvas.drawRect(0, mLineWidth, mPadding, getFilmRollHeight(), sBackgroundPaint);
+        canvas.drawRect(0, 0, getWidth(), mLineWidth, sBackgroundPaint);
+        canvas.drawRect(0, getFilmRollHeight(), getWidth(), getFilmRollHeight() + mLineWidth * 2, sBackgroundPaint);
+        canvas.drawRect(mPadding + getFilmRollWidth(), mLineWidth, getWidth(), getFilmRollHeight(), sBackgroundPaint);
     }
 
-    private void drawRightThumb(float screenCoord, Canvas canvas) {
-        canvas.drawRect(screenCoord + mThumbHalfWidth, 0, getWidth(), getFilmRollHeight(), sWhite75Paint);
-        canvas.drawLine(normalizedToScreen(mNormalizedMinValue), getFilmRollHeight() - mLineWidth / 2L, screenCoord, getFilmRollHeight() - mLineWidth / 2L, sLinePaint);
-        canvas.drawLine(screenCoord, mLineWidth / 2L, normalizedToScreen(mNormalizedMinValue), mLineWidth / 2L, sLinePaint);
-        canvas.drawRect(screenCoord - mThumbHalfWidth, 0, screenCoord + mThumbHalfWidth, getFilmRollHeight(), sThumbPaint);
+    private void drawBitmaps(Canvas canvas) {
+        int horizontalOffset = 0;
+
+        for (Bitmap bitmap : mBitmaps) {
+            if (bitmap != null) {
+                mRectangle.set(horizontalOffset, 0, mScaledFrameWidth + horizontalOffset, getFilmRollHeight());
+                canvas.drawBitmap(bitmap, null, mRectangle, sBitmapPaint);
+            }
+
+            horizontalOffset += mScaledFrameWidth;
+        }
+    }
+
+    private void drawLeftThumb(double minValue, Canvas canvas) {
+        float screenCoord = (float) minValue * getFilmRollWidth();
+        canvas.drawRect(0, 0, screenCoord - mThumbWidth, getFilmRollHeight(), sWhite75Paint);
+        canvas.drawRect(screenCoord - mThumbWidth, 0, screenCoord, getFilmRollHeight(), sThumbPaint);
+    }
+
+    private void drawRightThumb(double maxValue, Canvas canvas) {
+        float screenCoord = (float) maxValue * getFilmRollWidth();
+        canvas.drawRect(screenCoord + mThumbHalfWidth, 0, getFilmRollWidth(), getFilmRollHeight(), sWhite75Paint);
+        canvas.drawLine((float) mNormalizedMinValue * getFilmRollWidth(), getFilmRollHeight() - mLineWidth / 2L, screenCoord, getFilmRollHeight() - mLineWidth / 2L, sLinePaint);
+        canvas.drawLine(screenCoord, mLineWidth / 2L, (float) mNormalizedMinValue * getFilmRollWidth(), mLineWidth / 2L, sLinePaint);
+        canvas.drawRect(screenCoord, 0, screenCoord + mThumbWidth, getFilmRollHeight(), sThumbPaint);
     }
 
     private void drawSeekBar(Canvas canvas) {
@@ -227,13 +251,13 @@ public class FilmRollView extends View {
             mNormalizedSeekValue = (float) mPlayer.getCurrentPosition() / mPlayer.getDuration();
         }
 
-        if (mPlayer.getCurrentPosition() >= normalizedValueToTime(mNormalizedMaxValue) && mPlayer.isPlaying() && !mIsDragging) {
+        if (mNormalizedSeekValue >= mNormalizedMaxValue && mPlayer.isPlaying() && !mIsDragging) {
             mPlayer.pause();
             mHasReachedEnd = true;
         }
 
-        if (!mHasReachedEnd) {
-            canvas.drawRect(normalizedToScreen(mNormalizedSeekValue) - mThumbHalfWidth / 2L, 0, normalizedToScreen(mNormalizedSeekValue) + mThumbHalfWidth / 2L, getFilmRollHeight(), sWhitePaint);
+        if (mPlayer.isPlaying() || ((mIsDragging || mHasDragged) && (mNormalizedSeekValue - 0.02d > mNormalizedMinValue && mNormalizedSeekValue + 0.02d < mNormalizedMaxValue))) {
+            canvas.drawRect((float) mNormalizedSeekValue * getFilmRollWidth() - mThumbHalfWidth / 2L, 0, (float) mNormalizedSeekValue * getFilmRollWidth() + mThumbHalfWidth / 2L, getFilmRollHeight(), sWhitePaint);
         }
     }
 
@@ -247,17 +271,6 @@ public class FilmRollView extends View {
         } else {
             canvas.drawBitmap(mPlayButton, left, top, sBitmapPaint);
         }
-    }
-
-    /**
-     * Converts a normalized value into screen space.
-     *
-     * @param normalizedCoord
-     *            The normalized value to convert.
-     * @return The converted value in screen space.
-     */
-    private float normalizedToScreen(double normalizedCoord) {
-        return (float) (mPadding + normalizedCoord * (getWidth() - 2 * mPadding));
     }
 
     /**
@@ -369,13 +382,13 @@ public class FilmRollView extends View {
             final float x = event.getX(pointerIndex);
 
             if (Thumb.MIN.equals(mPressedThumb)) {
-                setNormalizedMinValue(screenToNormalized(x));
+                setNormalizedMinValue(leftHandleTouchToNormalized(x));
             }
             else if (Thumb.MAX.equals(mPressedThumb)) {
-                setNormalizedMaxValue(screenToNormalized(x));
+                setNormalizedMaxValue(rightThumbTouchToNormalized(x));
             }
         } catch (IllegalArgumentException e) {
-         // Ignore pointerIndex out of range
+            // Ignore pointerIndex out of range
         }
     }
 
@@ -393,8 +406,8 @@ public class FilmRollView extends View {
             return null;
         }
 
-        boolean minThumbPressed = isInThumbRange(touchX, mNormalizedMinValue);
-        boolean maxThumbPressed = isInThumbRange(touchX, mNormalizedMaxValue);
+        boolean minThumbPressed = isInMinThumbRange(touchX, mNormalizedMinValue);
+        boolean maxThumbPressed = isInMaxThumbRange(touchX, mNormalizedMaxValue);
 
         if (minThumbPressed) {
             result = Thumb.MIN;
@@ -415,8 +428,12 @@ public class FilmRollView extends View {
      *            The normalized x-coordinate of the thumb to check.
      * @return true if x-coordinate is in thumb range, false otherwise.
      */
-    private boolean isInThumbRange(float touchX, double normalizedThumbValue) {
-        return Math.abs(touchX - normalizedToScreen(normalizedThumbValue)) <= mThumbHalfWidth * 3;
+    private boolean isInMinThumbRange(float touchX, double normalizedThumbValue) {
+        return Math.abs(touchX - (mPadding + normalizedThumbValue * getFilmRollWidth() - mThumbHalfWidth)) <= mThumbHalfWidth * 3;
+    }
+
+    private boolean isInMaxThumbRange(float touchX, double normalizedThumbValue) {
+        return Math.abs(touchX - (mPadding + normalizedThumbValue * getFilmRollWidth() + mThumbHalfWidth)) <= mThumbHalfWidth * 3;
     }
 
     /**
@@ -426,8 +443,8 @@ public class FilmRollView extends View {
      *            The new normalized min value to set.
      */
     public void setNormalizedMinValue(double value) {
-        float maxScreenCoord = normalizedToScreen(mNormalizedMaxValue) - mThumbWidth * 2;
-        mNormalizedMinValue = Math.max(0d, Math.min(1d, Math.min(value, screenToNormalized(maxScreenCoord))));
+        double maxValue = mNormalizedMaxValue - (mThumbWidth * 2 / getFilmRollWidth());
+        mNormalizedMinValue = Math.max(0d, Math.min(1d, Math.min(value, maxValue)));
         updatePlayerPreview(mNormalizedMinValue);
 
         if ((mNormalizedMaxValue - mNormalizedMinValue) * mPlayer.getDuration() / 1000d > mMaxDuration) {
@@ -443,12 +460,18 @@ public class FilmRollView extends View {
      * @param value The new normalized max value to set.
      */
     public void setNormalizedMaxValue(double value) {
-        float minScreenCoord = normalizedToScreen(mNormalizedMinValue) + mThumbWidth * 2;
-        mNormalizedMaxValue = Math.max(0d, Math.min(1d, Math.max(value, screenToNormalized(minScreenCoord))));
+        double minValue = mNormalizedMinValue + (mThumbWidth * 2 / getFilmRollWidth());
+        mNormalizedMaxValue = Math.max(0d, Math.min(1d, Math.max(value, minValue)));
         updatePlayerPreview(mNormalizedMaxValue);
 
         if ((mNormalizedMaxValue - mNormalizedMinValue) * mPlayer.getDuration() / 1000d > mMaxDuration) {
-            mNormalizedMinValue = (mMaxDuration * 1000d / mPlayer.getDuration() - mNormalizedMaxValue) * -1;
+            double newValue = (mMaxDuration * 1000d / mPlayer.getDuration() - mNormalizedMaxValue) * -1;
+
+            if (Math.abs(mNormalizedSeekValue - mNormalizedMinValue) < 0.01d) {
+                mNormalizedSeekValue = newValue;
+            }
+
+            mNormalizedMinValue = newValue;
         }
 
         invalidate();
@@ -460,23 +483,12 @@ public class FilmRollView extends View {
         mPlayer.seekTo((int) newPosition);
     }
 
-    /**
-     * Converts screen space x-coordinates into normalized values.
-     *
-     * @param screenCoord
-     *            The x-coordinate in screen space to convert.
-     * @return The normalized value.
-     */
-    private double screenToNormalized(float screenCoord) {
-        int width = getWidth();
-        if (width <= 2 * mPadding) {
-            // prevent division by zero, simply return 0.
-            return 0d;
-        }
-        else {
-            double result = (screenCoord - mPadding) / (width - 2 * mPadding);
-            return Math.min(1d, Math.max(0d, result));
-        }
+    private double leftHandleTouchToNormalized(float screenCoord) {
+        return Math.min(1d, Math.max(0d, (screenCoord - mPadding + mThumbHalfWidth) / getFilmRollWidth()));
+    }
+
+    private double rightThumbTouchToNormalized(float screenCoord) {
+        return Math.min(1d, Math.max(0d, (screenCoord - mPadding - mThumbHalfWidth) / getFilmRollWidth()));
     }
 
     /**
