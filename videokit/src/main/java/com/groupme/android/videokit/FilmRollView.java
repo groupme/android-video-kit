@@ -32,7 +32,7 @@ public class FilmRollView extends View {
     private static final int SHOW_PROGRESS = 1;
     private static Paint sBitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private static Paint sThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private static Paint sWhite50Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private static Paint sWhite75Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static Paint sWhitePaint = new Paint();
     private static Paint sLinePaint = new Paint();
     private final int mLineWidth;
@@ -85,7 +85,7 @@ public class FilmRollView extends View {
     public FilmRollView(Context context, AttributeSet attrs) {
         super(context, attrs);
         sThumbPaint.setColor(getResources().getColor(R.color.gold));
-        sWhite50Paint.setColor(getResources().getColor(R.color.white_50));
+        sWhite75Paint.setColor(getResources().getColor(R.color.white_75));
         sWhitePaint.setColor(getResources().getColor(android.R.color.white));
         sLinePaint.setStyle(Paint.Style.STROKE);
         mLineWidth = getResources().getDimensionPixelSize(R.dimen.line_height);
@@ -137,14 +137,16 @@ public class FilmRollView extends View {
             for (int i = 1; i <= mFrameCount; i++) {
                 mBitmaps.add(mMetaDataExtractor.getFrameAtTime(timeOffset));
                 timeOffset += timeBetweenFrames;
-            }
 
-            post(new Runnable() {
-                @Override
-                public void run() {
-                    invalidate();
+                if (!mPlayer.isPlaying()) {
+                    post(new Runnable() {
+                        @Override
+                        public void run() {
+                            invalidate();
+                        }
+                    });
                 }
-            });
+            }
         }
     };
 
@@ -195,7 +197,7 @@ public class FilmRollView extends View {
 
             // draw maximum thumb
             if (mFirstPass && mPlayer.getDuration() != -1) {
-                mNormalizedMaxValue = (mMaxDuration * 1000d / mPlayer.getDuration() + mNormalizedMinValue);
+                mNormalizedMaxValue = Math.min(mPlayer.getDuration(), mMaxDuration * 1000d) / mPlayer.getDuration() + mNormalizedMinValue;
                 mFirstPass = false;
             }
 
@@ -209,14 +211,14 @@ public class FilmRollView extends View {
     }
 
     private void drawLeftThumb(float screenCoord, Canvas canvas) {
-        canvas.drawRect(0, 0, screenCoord - mThumbHalfWidth, getFilmRollHeight(), sWhite50Paint);
-        canvas.drawLine(screenCoord, mLineWidth / 2L, normalizedToScreen(mNormalizedMaxValue), mLineWidth / 2L, sLinePaint);
+        canvas.drawRect(0, 0, screenCoord - mThumbHalfWidth, getFilmRollHeight(), sWhite75Paint);
         canvas.drawRect(screenCoord - mThumbHalfWidth, 0, screenCoord + mThumbHalfWidth, getFilmRollHeight(), sThumbPaint);
     }
 
     private void drawRightThumb(float screenCoord, Canvas canvas) {
-        canvas.drawRect(screenCoord + mThumbHalfWidth, 0, getWidth(), getFilmRollHeight(), sWhite50Paint);
+        canvas.drawRect(screenCoord + mThumbHalfWidth, 0, getWidth(), getFilmRollHeight(), sWhite75Paint);
         canvas.drawLine(normalizedToScreen(mNormalizedMinValue), getFilmRollHeight() - mLineWidth / 2L, screenCoord, getFilmRollHeight() - mLineWidth / 2L, sLinePaint);
+        canvas.drawLine(screenCoord, mLineWidth / 2L, normalizedToScreen(mNormalizedMinValue), mLineWidth / 2L, sLinePaint);
         canvas.drawRect(screenCoord - mThumbHalfWidth, 0, screenCoord + mThumbHalfWidth, getFilmRollHeight(), sThumbPaint);
     }
 
@@ -236,7 +238,7 @@ public class FilmRollView extends View {
     }
 
     private void drawPlayBar(Canvas canvas) {
-        canvas.drawRect(0, getHeight() - mPlayBarHeight, getWidth(), getHeight(), sWhite50Paint);
+        canvas.drawRect(0, getHeight() - mPlayBarHeight, getWidth(), getHeight(), sWhite75Paint);
         int left = (getWidth() - mPlayButton.getWidth()) / 2;
         float top = getHeight() - mPlayBarHeight / 2 - mPlayButton.getScaledHeight(canvas) / 2;
 
