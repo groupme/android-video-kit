@@ -50,6 +50,7 @@ public class FilmRollView extends View {
     private double mNormalizedSeekValue = 0d;
     private boolean mHasDragged;
     private boolean mHasReachedEnd;
+    private boolean mSeekAtBeginning = true;
 
     /**
      * Callback listener interface to notify about changed range values.
@@ -256,7 +257,7 @@ public class FilmRollView extends View {
             mHasReachedEnd = true;
         }
 
-        if (mPlayer.isPlaying() || ((mIsDragging || mHasDragged) && (mNormalizedSeekValue - 0.02d > mNormalizedMinValue && mNormalizedSeekValue + 0.02d < mNormalizedMaxValue))) {
+        if (!mHasReachedEnd && !mSeekAtBeginning) {
             canvas.drawRect((float) mNormalizedSeekValue * getFilmRollWidth() - mThumbHalfWidth / 2L, 0, (float) mNormalizedSeekValue * getFilmRollWidth() + mThumbHalfWidth / 2L, getFilmRollHeight(), sWhitePaint);
         }
     }
@@ -334,6 +335,8 @@ public class FilmRollView extends View {
                     setPressed(false);
                 } else {
                     if (playBarTouched(event)) {
+                        mSeekAtBeginning = false;
+
                         if (mPlayer.isPlaying()) {
                             mPlayer.pause();
                         } else {
