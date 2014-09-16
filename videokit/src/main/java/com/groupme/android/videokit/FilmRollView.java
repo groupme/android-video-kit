@@ -32,7 +32,10 @@ public class FilmRollView extends View {
     private static final int SHOW_PROGRESS = 1;
     private static Paint sBitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private static Paint sThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private static Paint sWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private static Paint sWhite50Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private static Paint sWhitePaint = new Paint();
+    private static Paint sLinePaint = new Paint();
+    private final int mLineWidth;
     private int mActivePointerId;
     private float mDownMotionX;
     private Thumb mPressedThumb;
@@ -44,6 +47,8 @@ public class FilmRollView extends View {
     private int mMaxDuration = 15;
     private boolean mFirstPass = true;
     private float mSeekBarPosition;
+    private boolean mHasDragged;
+    private boolean mHasReachedEnd;
 
     /**
      * Callback listener interface to notify about changed range values.
@@ -80,7 +85,13 @@ public class FilmRollView extends View {
     public FilmRollView(Context context, AttributeSet attrs) {
         super(context, attrs);
         sThumbPaint.setColor(getResources().getColor(R.color.gold));
-        sWhitePaint.setColor(getResources().getColor(R.color.white_50));
+        sWhite50Paint.setColor(getResources().getColor(R.color.white_50));
+        sWhitePaint.setColor(getResources().getColor(android.R.color.white));
+        sLinePaint.setStyle(Paint.Style.STROKE);
+        mLineWidth = getResources().getDimensionPixelSize(R.dimen.line_height);
+        sLinePaint.setStrokeWidth(mLineWidth);
+        sLinePaint.setColor(getResources().getColor(R.color.gold));
+
         mScaledTouchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         setClickable(true);
     }
@@ -145,7 +156,7 @@ public class FilmRollView extends View {
                     if (mPlayer.isPlaying()) {
                         invalidate();
                         msg = obtainMessage(SHOW_PROGRESS);
-                        sendMessageDelayed(msg, 250);
+                        sendMessageDelayed(msg, 200);
                     }
                     break;
             }
@@ -177,10 +188,10 @@ public class FilmRollView extends View {
                 horizontalOffset += mScaledFrameWidth;
             }
 
-            drawSeek(canvas);
+            drawSeekBar(canvas);
 
             // draw minimum thumb
-            drawThumb(normalizedToScreen(mNormalizedMinValue), Thumb.MIN.equals(mPressedThumb), canvas);
+            drawLeftThumb(normalizedToScreen(mNormalizedMinValue), canvas);
 
             // draw maximum thumb
             if (mFirstPass && mPlayer.getDuration() != -1) {
@@ -188,7 +199,7 @@ public class FilmRollView extends View {
                 mFirstPass = false;
             }
 
-            drawThumb(normalizedToScreen(mNormalizedMaxValue), Thumb.MAX.equals(mPressedThumb), canvas);
+            drawRightThumb(normalizedToScreen(mNormalizedMaxValue), canvas);
             drawPlayBar(canvas);
         }
     }
@@ -197,36 +208,35 @@ public class FilmRollView extends View {
         return (int) (normalizedValue * mPlayer.getDuration());
     }
 
-    /**
-     * Draws the "normal" resp. "pressed" thumb image on specified x-coordinate.
-     *
-     * @param screenCoord
-     *            The x-coordinate in screen space where to draw the image.
-     * @param pressed
-     *            Is the thumb currently in "pressed" state?
-     * @param canvas
-     *            The canvas to draw upon.
-     */
-    private void drawThumb(float screenCoord, boolean pressed, Canvas canvas) {
+    private void drawLeftThumb(float screenCoord, Canvas canvas) {
+        canvas.drawRect(0, 0, screenCoord - mThumbHalfWidth, getFilmRollHeight(), sWhite50Paint);
+        canvas.drawLine(screenCoord, mLineWidth / 2L, normalizedToScreen(mNormalizedMaxValue), mLineWidth / 2L, sLinePaint);
         canvas.drawRect(screenCoord - mThumbHalfWidth, 0, screenCoord + mThumbHalfWidth, getFilmRollHeight(), sThumbPaint);
     }
 
-    private void drawSeek(Canvas canvas) {
-        if (!mIsDragging) {
+    private void drawRightThumb(float screenCoord, Canvas canvas) {
+        canvas.drawRect(screenCoord + mThumbHalfWidth, 0, getWidth(), getFilmRollHeight(), sWhite50Paint);
+        canvas.drawLine(normalizedToScreen(mNormalizedMinValue), getFilmRollHeight() - mLineWidth / 2L, screenCoord, getFilmRollHeight() - mLineWidth / 2L, sLinePaint);
+        canvas.drawRect(screenCoord - mThumbHalfWidth, 0, screenCoord + mThumbHalfWidth, getFilmRollHeight(), sThumbPaint);
+    }
+
+    private void drawSeekBar(Canvas canvas) {
+        if (!mIsDragging && !mHasDragged) {
             mSeekBarPosition = (float) mPlayer.getCurrentPosition() / (float) mPlayer.getDuration() * getWidth();
         }
 
-        if (mPlayer.getCurrentPosition() >= normalizedValueToTime(mNormalizedMaxValue) && mPlayer.isPlaying()) {
+        if (mPlayer.getCurrentPosition() >= normalizedValueToTime(mNormalizedMaxValue) && mPlayer.isPlaying() && !mIsDragging) {
             mPlayer.pause();
+            mHasReachedEnd = true;
         }
 
-        if (mIsDragging || mSeekBarPosition + mThumbHalfWidth < normalizedToScreen(mNormalizedMaxValue) - mThumbHalfWidth) {
-            canvas.drawRect(mSeekBarPosition - mThumbHalfWidth, 0, mSeekBarPosition + mThumbHalfWidth, getFilmRollHeight(), sWhitePaint);
+        if (!mHasReachedEnd) {
+            canvas.drawRect(mSeekBarPosition - mThumbHalfWidth / 2L, 0, mSeekBarPosition + mThumbHalfWidth / 2L, getFilmRollHeight(), sWhitePaint);
         }
     }
 
     private void drawPlayBar(Canvas canvas) {
-        canvas.drawRect(0, getHeight() - mPlayBarHeight, getWidth(), getHeight(), sWhitePaint);
+        canvas.drawRect(0, getHeight() - mPlayBarHeight, getWidth(), getHeight(), sWhite50Paint);
         int left = (getWidth() - mPlayButton.getWidth()) / 2;
         float top = getHeight() - mPlayBarHeight / 2 - mPlayButton.getScaledHeight(canvas) / 2;
 
@@ -308,22 +318,17 @@ public class FilmRollView extends View {
                     onStopTrackingTouch();
                     setPressed(false);
                 } else {
-                    // Touch up when we never crossed the touch slop threshold
-                    // should be interpreted as a tap-seek to that location.
-                    onStartTrackingTouch();
-                    trackTouchEvent(event);
-                    onStopTrackingTouch();
-
                     if (playBarTouched(event)) {
                         if (mPlayer.isPlaying()) {
                             mPlayer.pause();
                         } else {
-                            if (mSeekBarPosition > normalizedToScreen(mNormalizedMinValue)) {
-                                mPlayer.seekTo((int) (mSeekBarPosition / getWidth() * mPlayer.getDuration()));
-                            }
-
-                            if (mPlayer.getCurrentPosition() >= normalizedValueToTime(mNormalizedMaxValue)) {
+                            if (mHasReachedEnd) {
+                                mHasReachedEnd = false;
+                                mHasDragged = false;
                                 mPlayer.seekTo(normalizedValueToTime(mNormalizedMinValue));
+                            } else if (mHasDragged) {
+                                 mHasDragged = false;
+                                 mPlayer.seekTo((int) (mSeekBarPosition * mPlayer.getDuration() / getWidth()));
                             }
 
                             mPlayer.start();
@@ -486,6 +491,7 @@ public class FilmRollView extends View {
      */
     void onStartTrackingTouch() {
         mIsDragging = true;
+        mPlayer.pause();
     }
 
     /**
@@ -493,6 +499,13 @@ public class FilmRollView extends View {
      */
     void onStopTrackingTouch() {
         mIsDragging = false;
+        mHasDragged = true;
+
+        if (Thumb.MAX.equals(mPressedThumb) && mSeekBarPosition >= normalizedToScreen(mNormalizedMaxValue)) {
+            mHasReachedEnd = true;
+        } else if (Thumb.MIN.equals(mPressedThumb) && mSeekBarPosition <= normalizedToScreen(mNormalizedMinValue)) {
+            mHasReachedEnd = true;
+        }
     }
 
     @Override
