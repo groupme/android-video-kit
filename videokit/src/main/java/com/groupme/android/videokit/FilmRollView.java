@@ -46,7 +46,7 @@ public class FilmRollView extends View {
     // The maximum duration of the final, trimmed video
     private int mMaxDuration = 15;
     private boolean mFirstPass = true;
-    private float mSeekBarPosition;
+    private double mNormalizedSeekValue = 0d;
     private boolean mHasDragged;
     private boolean mHasReachedEnd;
 
@@ -224,7 +224,7 @@ public class FilmRollView extends View {
 
     private void drawSeekBar(Canvas canvas) {
         if (!mIsDragging && !mHasDragged) {
-            mSeekBarPosition = (float) mPlayer.getCurrentPosition() / (float) mPlayer.getDuration() * getWidth();
+            mNormalizedSeekValue = (float) mPlayer.getCurrentPosition() / mPlayer.getDuration();
         }
 
         if (mPlayer.getCurrentPosition() >= normalizedValueToTime(mNormalizedMaxValue) && mPlayer.isPlaying() && !mIsDragging) {
@@ -233,7 +233,7 @@ public class FilmRollView extends View {
         }
 
         if (!mHasReachedEnd) {
-            canvas.drawRect(mSeekBarPosition - mThumbHalfWidth / 2L, 0, mSeekBarPosition + mThumbHalfWidth / 2L, getFilmRollHeight(), sWhitePaint);
+            canvas.drawRect(normalizedToScreen(mNormalizedSeekValue) - mThumbHalfWidth / 2L, 0, normalizedToScreen(mNormalizedSeekValue) + mThumbHalfWidth / 2L, getFilmRollHeight(), sWhitePaint);
         }
     }
 
@@ -330,7 +330,7 @@ public class FilmRollView extends View {
                                 mPlayer.seekTo(normalizedValueToTime(mNormalizedMinValue));
                             } else if (mHasDragged) {
                                  mHasDragged = false;
-                                 mPlayer.seekTo((int) (mSeekBarPosition * mPlayer.getDuration() / getWidth()));
+                                 mPlayer.seekTo((int) (mNormalizedSeekValue * mPlayer.getDuration()));
                             }
 
                             mPlayer.start();
@@ -503,9 +503,9 @@ public class FilmRollView extends View {
         mIsDragging = false;
         mHasDragged = true;
 
-        if (Thumb.MAX.equals(mPressedThumb) && mSeekBarPosition >= normalizedToScreen(mNormalizedMaxValue)) {
+        if (Thumb.MAX.equals(mPressedThumb) && mNormalizedSeekValue >= mNormalizedMaxValue) {
             mHasReachedEnd = true;
-        } else if (Thumb.MIN.equals(mPressedThumb) && mSeekBarPosition <= normalizedToScreen(mNormalizedMinValue)) {
+        } else if (Thumb.MIN.equals(mPressedThumb) && mNormalizedSeekValue <= mNormalizedMinValue) {
             mHasReachedEnd = true;
         }
     }
