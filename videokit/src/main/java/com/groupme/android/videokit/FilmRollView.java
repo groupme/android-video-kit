@@ -44,6 +44,8 @@ public class FilmRollView extends View {
     private static final String KEY_IS_PLAYING = "is_playing";
     private static final java.lang.String KEY_IS_SEEK_AT_BEGINNING = "seek_at_beginning";
     private static final String KEY_HAS_REACHED_END = "is_at_end";
+    private static final String KEY_SAVED_BITMAP_SIZE = "bitmap_size";
+    private static final String KEY_SAVED_MORE_BITMAP_SIZE = "more_bitmap_size";
     private static Paint sBitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private static Paint sThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static Paint sWhite75Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -70,7 +72,6 @@ public class FilmRollView extends View {
     private MediaMetadataRetriever mMetaDataExtractor;
     private Rect mRectangle = new Rect(0, 0, 0, 0);
     private int mScaledFrameWidth;
-    private boolean mBitmapsRetrieved;
     private int mFrameCount;
     private int mLandscapeFrameCount;
     private final float mThumbWidth = getResources().getDimensionPixelSize(R.dimen.handle_width);
@@ -83,6 +84,7 @@ public class FilmRollView extends View {
     private final Bitmap mPauseButton = BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_media_pause);
     private int mDuration;
     private boolean mIsPlaying;
+    private boolean mFrameRetrieverStarted;
 
     private static enum Thumb {
         MIN, MAX
@@ -134,7 +136,7 @@ public class FilmRollView extends View {
         return (int) (mNormalizedMaxValue * mDuration);
     }
 
-    Runnable mFrameRetriever = new Runnable() {
+    Thread mFrameRetriever = new Thread(new Runnable() {
         @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
         @Override
         public void run() {
@@ -157,8 +159,13 @@ public class FilmRollView extends View {
             int timeBetweenFrames = (int) (duration / mFrameCount) * 1000;
             int timeOffset = 0;
 
-            for (int i = 1; i <= mFrameCount; i++) {
-                mBitmaps.add(mMetaDataExtractor.getFrameAtTime(timeOffset));
+            for (int i = mBitmaps.size(); i < mFrameCount; i++) {
+                if (mFrameRetriever.isInterrupted()) {
+                    return;
+                }
+
+                Bitmap frame = mMetaDataExtractor.getFrameAtTime(timeOffset);
+                mBitmaps.add(frame);
                 timeOffset += timeBetweenFrames;
 
                 if (!mIsPlaying) {
@@ -175,8 +182,13 @@ public class FilmRollView extends View {
             timeBetweenFrames = (int) (duration / mLandscapeFrameCount) * 1000;
             timeOffset = 0;
 
-            for (int i = 1; i <= mLandscapeFrameCount; i++) {
-                mMoreBitmaps.add(mMetaDataExtractor.getFrameAtTime(timeOffset));
+            for (int i = mMoreBitmaps.size(); i < mLandscapeFrameCount; i++) {
+                if (mFrameRetriever.isInterrupted()) {
+                    return;
+                }
+
+                Bitmap frame = mMetaDataExtractor.getFrameAtTime(timeOffset);
+                mMoreBitmaps.add(frame);
                 timeOffset += timeBetweenFrames;
 
                 if (!mIsPlaying) {
@@ -189,7 +201,8 @@ public class FilmRollView extends View {
                 }
             }
         }
-    };
+
+    });
 
     private Handler mHandler = new Handler() {
         @Override
@@ -243,9 +256,9 @@ public class FilmRollView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        if (mMetaDataExtractor != null && mBitmaps.isEmpty() && !mBitmapsRetrieved) {
-            mBitmapsRetrieved = true;
-            new Thread(mFrameRetriever).start();
+        if (!mFrameRetrieverStarted) {
+            mFrameRetrieverStarted = true;
+            mFrameRetriever.start();
         }
 
         drawBorderFrame(canvas);
@@ -604,11 +617,21 @@ public class FilmRollView extends View {
         Bundle bundle = new Bundle();
         bundle.putParcelable(KEY_INSTANCE_STATE, super.onSaveInstanceState());
 
-        for (int i = 0; i < mBitmaps.size(); i++) {
+        if (mFrameRetriever.isAlive()) {
+            mFrameRetriever.interrupt();
+        }
+
+        int size = mBitmaps.size();
+        bundle.putInt(KEY_SAVED_BITMAP_SIZE, size);
+
+        for (int i = 0; i < size; i++) {
             bundle.putParcelable(String.format("%s_%s", KEY_FRAME, i), mBitmaps.get(i));
         }
 
-        for (int i = 0; i < mMoreBitmaps.size(); i++) {
+        int moreSize = mMoreBitmaps.size();
+        bundle.putInt(KEY_SAVED_MORE_BITMAP_SIZE, moreSize);
+
+        for (int i = 0; i < moreSize; i++) {
             bundle.putParcelable(String.format("%s_%s", KEY_LANDSCAPE_FRAME, i), mMoreBitmaps.get(i));
         }
 
@@ -621,7 +644,6 @@ public class FilmRollView extends View {
         bundle.putBoolean(KEY_IS_SEEK_AT_BEGINNING, mSeekAtBeginning);
         bundle.putBoolean(KEY_IS_PLAYING, mIsPlaying);
         bundle.putBoolean(KEY_HAS_REACHED_END, mHasReachedEnd);
-
         mHandler.sendEmptyMessage(STOP);
 
         return bundle;
@@ -645,11 +667,11 @@ public class FilmRollView extends View {
                 mHandler.sendEmptyMessage(SHOW_PROGRESS);
             }
 
-            for (int i = 0; i < mFrameCount; i++) {
+            for (int i = 0; i < bundle.getInt(KEY_SAVED_BITMAP_SIZE); i++) {
                 mBitmaps.add((Bitmap) bundle.getParcelable(String.format("%s_%s", KEY_FRAME, i)));
             }
 
-            for (int i = 0; i < mLandscapeFrameCount; i++) {
+            for (int i = 0; i < bundle.getInt(KEY_SAVED_MORE_BITMAP_SIZE); i++) {
                 mMoreBitmaps.add((Bitmap) bundle.getParcelable(String.format("%s_%s", KEY_LANDSCAPE_FRAME, i)));
             }
 
