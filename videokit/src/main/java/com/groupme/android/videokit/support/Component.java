@@ -19,7 +19,7 @@ public class Component {
 
     public static int NO_TRACK_AVAILABLE = -1;
 
-    private final Context mContext;
+    private Context mContext;
     private final Uri mSrcUri;
     private final int mType;
 
@@ -77,6 +77,12 @@ public class Component {
      */
     public int getType() {
         return mType;
+    }
+
+    public void release() {
+        mContext = null;
+        mMediaExtractor.release();
+        mMediaExtractor = null;
     }
 
     /**

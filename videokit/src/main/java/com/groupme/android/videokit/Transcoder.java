@@ -595,7 +595,7 @@ public class Transcoder {
 
         ByteBuffer[] videoDecoderInputBuffers = videoDecoder.getInputBuffers();
         ByteBuffer[] videoDecoderOutputBuffers = videoDecoder.getOutputBuffers();
-        ByteBuffer[]videoEncoderOutputBuffers = videoEncoder.getOutputBuffers();
+        ByteBuffer[] videoEncoderOutputBuffers = videoEncoder.getOutputBuffers();
         MediaCodec.BufferInfo videoDecoderOutputBufferInfo = new MediaCodec.BufferInfo();
         MediaCodec.BufferInfo videoEncoderOutputBufferInfo = new MediaCodec.BufferInfo();
 
@@ -788,8 +788,8 @@ public class Transcoder {
                     Log.d(TAG, "video decoder: returned buffer of size "
                             + videoDecoderOutputBufferInfo.size);
                 }
-                ByteBuffer decoderOutputBuffer =
-                        videoDecoderOutputBuffers[decoderOutputBufferIndex];
+//                ByteBuffer decoderOutputBuffer =
+//                        videoDecoderOutputBuffers[decoderOutputBufferIndex];
                 if ((videoDecoderOutputBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG)
                         != 0) {
                     if (VERBOSE) Log.d(TAG, "video decoder: codec config buffer");

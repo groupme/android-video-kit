@@ -12,6 +12,7 @@ import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
 
+import com.groupme.android.videokit.VideoTranscoder;
 import com.groupme.android.videokit.util.MediaInfo;
 import com.groupme.android.videokit.Transcoder;
 import com.groupme.android.videokit.support.InputSurface;
@@ -67,10 +68,43 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
         MediaInfo mediaInfo = new MediaInfo(this, videoUri);
 
         if (mediaInfo.hasVideoTrack()) {
-            Transcoder.with(this)
-                    .source(mediaInfo)
-                    .listener(this)
-                    .start(Transcoder.getDefaultOutputFilePath());
+//            Transcoder.with(this)
+//                    .source(mediaInfo)
+//                    .listener(this)
+//                    .start(Transcoder.getDefaultOutputFilePath());
+
+            final File outputFile = new File(Environment.getExternalStorageDirectory(), "output.mp4");
+
+            VideoTranscoder transcoder = new VideoTranscoder.Builder(videoUri, outputFile)
+                    .build(getApplicationContext());
+
+            transcoder.start(new VideoTranscoder.Listener() {
+                @Override
+                public void onSuccess(VideoTranscoder.Stats stats) {
+                    if (mProgressDialog.isShowing()) {
+                        mProgressDialog.dismiss();
+                    }
+
+                    mInputFileSize.setText(String.format("Input file: %sMB", stats.inputFileSize));
+                    mOutputFileSize.setText(String.format("Output file: %sMB", stats.outputFileSize));
+                    mTimeToEncode.setText(String.format("Time to encode: %ss", stats.timeToTranscode));
+
+                    Button playVideo = (Button) findViewById(R.id.btn_play);
+                    playVideo.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            Intent intent = new Intent(android.content.Intent.ACTION_VIEW);
+                            intent.setDataAndType(Uri.fromFile(outputFile), "video/*");
+                            startActivity(intent);
+                        }
+                    });
+                }
+
+                @Override
+                public void onFailure() {
+
+                }
+            });
 
             mProgressDialog = new ProgressDialog(this);
             mProgressDialog.setIndeterminate(true);

@@ -45,6 +45,11 @@ public class LogUtils {
         }
     }
 
+    public static void e(String message, Throwable e) {
+        e(message);
+        e(e);
+    }
+
     public static void i(String message) {
         if (isLoggable(Log.INFO)) {
             Log.i(LOG_TAG, message);
