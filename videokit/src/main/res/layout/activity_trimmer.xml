@@ -5,7 +5,7 @@
     android:background="@android:color/black"
     android:layout_height="match_parent">
 
-    <VideoView
+    <com.groupme.android.videokit.VideoStateView
         android:layout_gravity="center"
         android:id="@+id/video_view"
         android:layout_width="match_parent"

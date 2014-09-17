@@ -1,11 +1,13 @@
 package com.groupme.android.videokit;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.media.MediaMetadataRetriever;
@@ -16,9 +18,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Parcelable;
 import android.util.AttributeSet;
+import android.view.Display;
 import android.view.MotionEvent;
+import android.view.Surface;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.WindowManager;
 import android.widget.MediaController;
 
 import java.util.ArrayList;
@@ -26,55 +31,48 @@ import java.util.ArrayList;
 @TargetApi(Build.VERSION_CODES.GINGERBREAD_MR1)
 public class FilmRollView extends View {
     private static final String KEY_FRAME_WIDTH = "frame_width";
-    private static final Object KEY_FRAME = "frame";
+    private static final String KEY_FRAME = "frame";
     private static final String KEY_FRAME_COUNT = "frame_count";
     private static final String KEY_INSTANCE_STATE = "instance_state";
     private static final int SHOW_PROGRESS = 1;
+    private static final int STOP = 2;
+    private static final String KEY_LANDSCAPE_FRAME = "frame_land";
+    private static final String KEY_LANDSCAPE_FRAME_COUNT = "frame_count_land";
+    private static final String KEY_MIN_VALUE = "min_value";
+    private static final String KEY_MAX_VALUE = "max_value";
+    private static final String KEY_SEEK_VALUE = "seek_value";
+    private static final String KEY_IS_PLAYING = "is_playing";
+    private static final java.lang.String KEY_IS_SEEK_AT_BEGINNING = "seek_at_beginning";
+    private static final String KEY_HAS_REACHED_END = "is_at_end";
     private static Paint sBitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private static Paint sThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static Paint sWhite75Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static Paint sWhitePaint = new Paint();
     private static Paint sLinePaint = new Paint();
     private static Paint sBackgroundPaint = new Paint();
+    private static Paint sBlackPaint = new Paint();
+
     private final int mLineWidth;
     private int mActivePointerId;
     private float mDownMotionX;
     private Thumb mPressedThumb;
     private boolean mIsDragging;
     private float mScaledTouchSlop;
-    private boolean notifyWhileDragging;
     private MediaController.MediaPlayerControl mPlayer;
-    // The maximum duration of the final, trimmed video
-    private int mMaxDuration = 15;
-    private boolean mFirstPass = true;
+    // The maximum duration of the final, trimmed video in seconds
+    private int mMaxDuration;
     private double mNormalizedSeekValue = 0d;
     private boolean mHasDragged;
     private boolean mHasReachedEnd;
     private boolean mSeekAtBeginning = true;
-
-    /**
-     * Callback listener interface to notify about changed range values.
-     *
-     * @author Stephan Tittel (stephan.tittel@kom.tu-darmstadt.de)
-     *
-     * @param <T>
-     *            The Number type the RangeSeekBar has been declared with.
-     */
-    public interface OnRangeSeekBarChangeListener<T> {
-        public void onRangeSeekBarValuesChanged(FilmRollView bar, double minValue, double maxValue);
-    }
-
-    private static enum Thumb {
-        MIN, MAX
-    }
-
     private ArrayList<Bitmap> mBitmaps = new ArrayList<Bitmap>();
+    private ArrayList<Bitmap> mMoreBitmaps = new ArrayList<Bitmap>();
     private MediaMetadataRetriever mMetaDataExtractor;
     private Rect mRectangle = new Rect(0, 0, 0, 0);
     private int mScaledFrameWidth;
     private boolean mBitmapsRetrieved;
     private int mFrameCount;
-
+    private int mLandscapeFrameCount;
     private final float mThumbWidth = getResources().getDimensionPixelSize(R.dimen.handle_width);
     private final float mThumbHalfWidth = 0.5f * mThumbWidth;
     private final int mPadding = (int) mThumbHalfWidth * 3;
@@ -83,6 +81,12 @@ public class FilmRollView extends View {
     private double mNormalizedMaxValue = 1d;
     private final Bitmap mPlayButton = BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_media_play);
     private final Bitmap mPauseButton = BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_media_pause);
+    private int mDuration;
+    private boolean mIsPlaying;
+
+    private static enum Thumb {
+        MIN, MAX
+    }
 
     public FilmRollView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -94,6 +98,7 @@ public class FilmRollView extends View {
         sLinePaint.setStrokeWidth(mLineWidth);
         sLinePaint.setColor(getResources().getColor(R.color.gold));
         sBackgroundPaint.setColor(getResources().getColor(R.color.black85));
+        sBlackPaint.setColor(Color.BLACK);
 
         mScaledTouchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         setClickable(true);
@@ -104,6 +109,10 @@ public class FilmRollView extends View {
         mPlayer = player;
     }
 
+    public void setMaxDuration(int duration) {
+        mMaxDuration = duration;
+    }
+
     public void setVideoUri(Uri uri) {
         mMetaDataExtractor = new MediaMetadataRetriever();
 
@@ -112,6 +121,17 @@ public class FilmRollView extends View {
         } else {
             mMetaDataExtractor.setDataSource(getContext(), uri);
         }
+
+        mDuration = Integer.parseInt(mMetaDataExtractor.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+        mNormalizedMaxValue = Math.min(mDuration, mMaxDuration * 1000d) / mDuration + mNormalizedMinValue;
+    }
+
+    public int getStartTime() {
+        return (int) (mNormalizedMinValue * mDuration);
+    }
+
+    public int getEndTime() {
+        return (int) (mNormalizedMaxValue * mDuration);
     }
 
     Runnable mFrameRetriever = new Runnable() {
@@ -132,7 +152,7 @@ public class FilmRollView extends View {
                             MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT :
                             MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
             mScaledFrameWidth = (int) (getFilmRollHeight() * frameWidth / frameHeight);
-            mFrameCount = (int) ((float) getFilmRollWidth() / mScaledFrameWidth);
+            mFrameCount = (int) ((float) getFilmRollSmallerWidth() / mScaledFrameWidth);
             // The time between frames in micro-seconds
             int timeBetweenFrames = (int) (duration / mFrameCount) * 1000;
             int timeOffset = 0;
@@ -141,7 +161,25 @@ public class FilmRollView extends View {
                 mBitmaps.add(mMetaDataExtractor.getFrameAtTime(timeOffset));
                 timeOffset += timeBetweenFrames;
 
-                if (!mPlayer.isPlaying()) {
+                if (!mIsPlaying) {
+                    post(new Runnable() {
+                        @Override
+                        public void run() {
+                            invalidate();
+                        }
+                    });
+                }
+            }
+
+            mLandscapeFrameCount = (int) ((float) getFilmRollLargerWidth() / mScaledFrameWidth);
+            timeBetweenFrames = (int) (duration / mLandscapeFrameCount) * 1000;
+            timeOffset = 0;
+
+            for (int i = 1; i <= mLandscapeFrameCount; i++) {
+                mMoreBitmaps.add(mMetaDataExtractor.getFrameAtTime(timeOffset));
+                timeOffset += timeBetweenFrames;
+
+                if (!mIsPlaying) {
                     post(new Runnable() {
                         @Override
                         public void run() {
@@ -158,11 +196,14 @@ public class FilmRollView extends View {
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case SHOW_PROGRESS:
-                    if (mPlayer.isPlaying()) {
+                    if (mIsPlaying) {
                         invalidate();
                         msg = obtainMessage(SHOW_PROGRESS);
                         sendMessageDelayed(msg, 200);
                     }
+                    break;
+                case STOP:
+                    removeMessages(SHOW_PROGRESS);
                     break;
             }
         }
@@ -176,6 +217,28 @@ public class FilmRollView extends View {
         return getWidth() - 2 * mPadding;
     }
 
+    private int getFilmRollLargerWidth() {
+        WindowManager mWindowManager = (WindowManager) getContext().getSystemService(Activity.WINDOW_SERVICE);
+        Display mDisplay = mWindowManager.getDefaultDisplay();
+
+        if (mDisplay.getRotation() == Surface.ROTATION_0 || mDisplay.getRotation() == Surface.ROTATION_180) {
+            return getHeight() - 2 * mPadding;
+        } else {
+            return getWidth() - 2 * mPadding;
+        }
+    }
+
+    private int getFilmRollSmallerWidth() {
+        WindowManager mWindowManager = (WindowManager) getContext().getSystemService(Activity.WINDOW_SERVICE);
+        Display mDisplay = mWindowManager.getDefaultDisplay();
+
+        if (mDisplay.getRotation() == Surface.ROTATION_0 || mDisplay.getRotation() == Surface.ROTATION_180) {
+            return getWidth() - 2 * mPadding;
+        } else {
+            return getHeight() - 2 * mPadding;
+        }
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -185,7 +248,7 @@ public class FilmRollView extends View {
             new Thread(mFrameRetriever).start();
         }
 
-        drawFrame(canvas);
+        drawBorderFrame(canvas);
 
         if (mMetaDataExtractor != null) {
             canvas.save();
@@ -196,11 +259,6 @@ public class FilmRollView extends View {
             drawLeftThumb(mNormalizedMinValue, canvas);
 
             // draw maximum thumb
-            if (mFirstPass && mPlayer.getDuration() != -1) {
-                mNormalizedMaxValue = Math.min(mPlayer.getDuration(), mMaxDuration * 1000d) / mPlayer.getDuration() + mNormalizedMinValue;
-                mFirstPass = false;
-            }
-
             drawRightThumb(mNormalizedMaxValue, canvas);
             drawSeekBar(canvas);
             canvas.restore();
@@ -210,26 +268,37 @@ public class FilmRollView extends View {
     }
 
     private int normalizedValueToTime(double normalizedValue) {
-        return (int) (normalizedValue * mPlayer.getDuration());
+        return (int) (normalizedValue * mDuration);
     }
 
-    private void drawFrame(Canvas canvas) {
-        canvas.drawRect(0, mLineWidth, mPadding, getFilmRollHeight(), sBackgroundPaint);
-        canvas.drawRect(0, 0, getWidth(), mLineWidth, sBackgroundPaint);
-        canvas.drawRect(0, getFilmRollHeight(), getWidth(), getFilmRollHeight() + mLineWidth * 2, sBackgroundPaint);
-        canvas.drawRect(mPadding + getFilmRollWidth(), mLineWidth, getWidth(), getFilmRollHeight(), sBackgroundPaint);
+    private void drawBorderFrame(Canvas canvas) {
+        canvas.drawRect(0, 0, getWidth(), getFilmRollHeight() + mLineWidth * 2, sBackgroundPaint);
+        canvas.drawRect(mPadding, mLineWidth, getWidth() - mPadding, getFilmRollHeight(), sBlackPaint);
     }
 
     private void drawBitmaps(Canvas canvas) {
         int horizontalOffset = 0;
 
-        for (Bitmap bitmap : mBitmaps) {
+        ArrayList<Bitmap> bitmaps = getBitmapsForOrientation();
+
+        for (Bitmap bitmap : bitmaps) {
             if (bitmap != null) {
                 mRectangle.set(horizontalOffset, 0, mScaledFrameWidth + horizontalOffset, getFilmRollHeight());
                 canvas.drawBitmap(bitmap, null, mRectangle, sBitmapPaint);
             }
 
             horizontalOffset += mScaledFrameWidth;
+        }
+    }
+
+    private ArrayList<Bitmap> getBitmapsForOrientation() {
+        WindowManager mWindowManager = (WindowManager) getContext().getSystemService(Activity.WINDOW_SERVICE);
+        Display mDisplay = mWindowManager.getDefaultDisplay();
+
+        if (mDisplay.getRotation() == Surface.ROTATION_0 || mDisplay.getRotation() == Surface.ROTATION_180) {
+            return mBitmaps;
+        } else {
+            return mMoreBitmaps;
         }
     }
 
@@ -248,12 +317,13 @@ public class FilmRollView extends View {
     }
 
     private void drawSeekBar(Canvas canvas) {
-        if (!mIsDragging && !mHasDragged) {
-            mNormalizedSeekValue = (float) mPlayer.getCurrentPosition() / mPlayer.getDuration();
+        if (!mIsDragging && !mHasDragged && mPlayer.getCurrentPosition() != 0) {
+            mNormalizedSeekValue = (float) mPlayer.getCurrentPosition() / mDuration;
         }
 
-        if (mNormalizedSeekValue >= mNormalizedMaxValue && mPlayer.isPlaying() && !mIsDragging) {
+        if (mNormalizedSeekValue >= mNormalizedMaxValue && mIsPlaying && !mIsDragging) {
             mPlayer.pause();
+            mIsPlaying = false;
             mHasReachedEnd = true;
         }
 
@@ -267,7 +337,7 @@ public class FilmRollView extends View {
         int left = (getWidth() - mPlayButton.getWidth()) / 2;
         float top = getHeight() - mPlayBarHeight / 2 - mPlayButton.getScaledHeight(canvas) / 2;
 
-        if (mPlayer.isPlaying()) {
+        if (mIsPlaying) {
             canvas.drawBitmap(mPauseButton, left, top, sBitmapPaint);
         } else {
             canvas.drawBitmap(mPlayButton, left, top, sBitmapPaint);
@@ -337,19 +407,23 @@ public class FilmRollView extends View {
                     if (playBarTouched(event)) {
                         mSeekAtBeginning = false;
 
-                        if (mPlayer.isPlaying()) {
+                        if (mIsPlaying) {
                             mPlayer.pause();
+                            mIsPlaying = false;
                         } else {
                             if (mHasReachedEnd) {
                                 mHasReachedEnd = false;
                                 mHasDragged = false;
-                                mPlayer.seekTo(normalizedValueToTime(mNormalizedMinValue));
+                                mPlayer.seekTo(normalizedValueToTime(mNormalizedMinValue) + 1);
                             } else if (mHasDragged) {
                                  mHasDragged = false;
-                                 mPlayer.seekTo((int) (mNormalizedSeekValue * mPlayer.getDuration()));
+                                 mPlayer.seekTo((int) (mNormalizedSeekValue * mDuration));
+                            } else {
+                                mPlayer.seekTo((int) (mNormalizedSeekValue * mDuration));
                             }
 
                             mPlayer.start();
+                            mIsPlaying = true;
                             mHandler.sendEmptyMessage(SHOW_PROGRESS);
                         }
                     }
@@ -450,8 +524,8 @@ public class FilmRollView extends View {
         mNormalizedMinValue = Math.max(0d, Math.min(1d, Math.min(value, maxValue)));
         updatePlayerPreview(mNormalizedMinValue);
 
-        if ((mNormalizedMaxValue - mNormalizedMinValue) * mPlayer.getDuration() / 1000d > mMaxDuration) {
-            mNormalizedMaxValue = (mMaxDuration * 1000d / mPlayer.getDuration() + mNormalizedMinValue);
+        if ((mNormalizedMaxValue - mNormalizedMinValue) * mDuration / 1000d > mMaxDuration) {
+            mNormalizedMaxValue = (mMaxDuration * 1000d / mDuration + mNormalizedMinValue);
         }
 
         invalidate();
@@ -467,8 +541,8 @@ public class FilmRollView extends View {
         mNormalizedMaxValue = Math.max(0d, Math.min(1d, Math.max(value, minValue)));
         updatePlayerPreview(mNormalizedMaxValue);
 
-        if ((mNormalizedMaxValue - mNormalizedMinValue) * mPlayer.getDuration() / 1000d > mMaxDuration) {
-            double newValue = (mMaxDuration * 1000d / mPlayer.getDuration() - mNormalizedMaxValue) * -1;
+        if ((mNormalizedMaxValue - mNormalizedMinValue) * mDuration / 1000d > mMaxDuration) {
+            double newValue = (mMaxDuration * 1000d / mDuration - mNormalizedMaxValue) * -1;
 
             if (Math.abs(mNormalizedSeekValue - mNormalizedMinValue) < 0.01d) {
                 mNormalizedSeekValue = newValue;
@@ -481,8 +555,7 @@ public class FilmRollView extends View {
     }
 
     private void updatePlayerPreview(double progress) {
-        int duration = mPlayer.getDuration();
-        double newPosition = duration * progress;
+        double newPosition = mDuration * progress;
         mPlayer.seekTo((int) newPosition);
     }
 
@@ -509,6 +582,7 @@ public class FilmRollView extends View {
     void onStartTrackingTouch() {
         mIsDragging = true;
         mPlayer.pause();
+        mIsPlaying = false;
     }
 
     /**
@@ -534,8 +608,21 @@ public class FilmRollView extends View {
             bundle.putParcelable(String.format("%s_%s", KEY_FRAME, i), mBitmaps.get(i));
         }
 
+        for (int i = 0; i < mMoreBitmaps.size(); i++) {
+            bundle.putParcelable(String.format("%s_%s", KEY_LANDSCAPE_FRAME, i), mMoreBitmaps.get(i));
+        }
+
         bundle.putInt(KEY_FRAME_WIDTH, mScaledFrameWidth);
         bundle.putInt(KEY_FRAME_COUNT, mFrameCount);
+        bundle.putInt(KEY_LANDSCAPE_FRAME_COUNT, mLandscapeFrameCount);
+        bundle.putDouble(KEY_MIN_VALUE, mNormalizedMinValue);
+        bundle.putDouble(KEY_MAX_VALUE, mNormalizedMaxValue);
+        bundle.putDouble(KEY_SEEK_VALUE, mNormalizedSeekValue);
+        bundle.putBoolean(KEY_IS_SEEK_AT_BEGINNING, mSeekAtBeginning);
+        bundle.putBoolean(KEY_IS_PLAYING, mIsPlaying);
+        bundle.putBoolean(KEY_HAS_REACHED_END, mHasReachedEnd);
+
+        mHandler.sendEmptyMessage(STOP);
 
         return bundle;
     }
@@ -546,9 +633,24 @@ public class FilmRollView extends View {
             Bundle bundle = (Bundle) state;
             mFrameCount = bundle.getInt(KEY_FRAME_COUNT);
             mScaledFrameWidth = bundle.getInt(KEY_FRAME_WIDTH);
+            mLandscapeFrameCount = bundle.getInt(KEY_LANDSCAPE_FRAME_COUNT);
+            mNormalizedMinValue = bundle.getDouble(KEY_MIN_VALUE);
+            mNormalizedMaxValue = bundle.getDouble(KEY_MAX_VALUE);
+            mNormalizedSeekValue = bundle.getDouble(KEY_SEEK_VALUE);
+            mSeekAtBeginning = bundle.getBoolean(KEY_IS_SEEK_AT_BEGINNING);
+            mIsPlaying = bundle.getBoolean(KEY_IS_PLAYING);
+            mHasReachedEnd = bundle.getBoolean(KEY_HAS_REACHED_END);
+
+            if (mIsPlaying) {
+                mHandler.sendEmptyMessage(SHOW_PROGRESS);
+            }
 
             for (int i = 0; i < mFrameCount; i++) {
                 mBitmaps.add((Bitmap) bundle.getParcelable(String.format("%s_%s", KEY_FRAME, i)));
+            }
+
+            for (int i = 0; i < mLandscapeFrameCount; i++) {
+                mMoreBitmaps.add((Bitmap) bundle.getParcelable(String.format("%s_%s", KEY_LANDSCAPE_FRAME, i)));
             }
 
             state = bundle.getParcelable(KEY_INSTANCE_STATE);

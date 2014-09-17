@@ -20,6 +20,7 @@ import android.net.Uri;
 import android.opengl.GLES20;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
@@ -36,7 +37,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class MainActivity extends Activity implements Transcoder.OnVideoTranscodedListener {
     private static final int REQUEST_PICK_VIDEO = 0;
-    private static final int REQUEST_PICK_VIDE_FOR_TRIM = 1;
+    private static final int REQUEST_PICK_VIDEO_FOR_TRIM = 1;
+    private static final int REQUEST_TRIM_VIDEO = 2;
 
     // parameters for the video encoder
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
@@ -80,7 +82,7 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
             public void onClick(View view) {
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.setType("video/*");
-                startActivityForResult(intent, REQUEST_PICK_VIDE_FOR_TRIM);
+                startActivityForResult(intent, REQUEST_PICK_VIDEO_FOR_TRIM);
             }
         });
 
@@ -116,11 +118,16 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
                     e.printStackTrace();
                 }
                 break;
-            case REQUEST_PICK_VIDE_FOR_TRIM:
+            case REQUEST_PICK_VIDEO_FOR_TRIM:
                 if (resultCode == Activity.RESULT_OK) {
                     Intent i = new Intent(this, TrimmerActivity.class);
                     i.setData(data.getData());
-                    startActivity(i);
+                    startActivityForResult(i, REQUEST_TRIM_VIDEO);
+                }
+                break;
+            case REQUEST_TRIM_VIDEO:
+                if (data != null) {
+                    Log.d("TRIM", String.format("Start: %s End: %s", data.getIntExtra(TrimmerActivity.START_TIME, -1), data.getIntExtra(TrimmerActivity.END_TIME, -1)));
                 }
                 break;
             default:
