@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.groupme.android.videokit;
+package com.groupme.android.videokit.support;
 
+import android.annotation.TargetApi;
 import android.opengl.EGL14;
 import android.opengl.EGLExt;
 import android.opengl.EGLConfig;
@@ -33,6 +34,7 @@ import android.view.Surface;
  * to create an EGL window surface.  Calls to eglSwapBuffers() cause a frame of data to be sent
  * to the video encoder.
  */
+@TargetApi(17)
 public class InputSurface {
     private static final String TAG = "InputSurface";
 
