@@ -25,14 +25,20 @@ import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaMuxer;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.OpenableColumns;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
+
+import com.groupme.android.videokit.support.InputSurface;
+import com.groupme.android.videokit.support.OutputSurface;
+import com.groupme.android.videokit.util.MediaInfo;
 
 import java.io.File;
 import java.io.IOException;
@@ -156,7 +162,7 @@ public class Transcoder {
         }).start();
     }
 
-    public boolean startSync(String outputFile) {
+    public void startSync(String outputFile) throws Exception {
         if (mContext == null) {
             throw new IllegalStateException("Context cannot be null");
         }
@@ -168,13 +174,7 @@ public class Transcoder {
         mStartTime = System.currentTimeMillis();
         mOutputFile = outputFile;
 
-        try {
-            extractDecodeEditEncodeMux();
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
+        extractDecodeEditEncodeMux();
     }
 
     public static String getDefaultOutputFilePath() {
@@ -248,7 +248,16 @@ public class Transcoder {
                 outputWidth = (int) (ratio * inputHeight);
             }
 
-            mOrientationHint = inputFormat.containsKey(KEY_ROTATION) ? inputFormat.getInteger(KEY_ROTATION) : 0;
+            if (inputFormat.containsKey(KEY_ROTATION)) {
+                mOrientationHint = inputFormat.getInteger(KEY_ROTATION);
+            } else {
+                MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                retriever.setDataSource(mContext, mSourceVideoUri);
+                String orientation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
+                if (!TextUtils.isEmpty(orientation)) {
+                    mOrientationHint = Integer.parseInt(orientation);
+                }
+            }
 
             MediaFormat outputVideoFormat =
                     MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE,
@@ -586,7 +595,7 @@ public class Transcoder {
 
         ByteBuffer[] videoDecoderInputBuffers = videoDecoder.getInputBuffers();
         ByteBuffer[] videoDecoderOutputBuffers = videoDecoder.getOutputBuffers();
-        ByteBuffer[]videoEncoderOutputBuffers = videoEncoder.getOutputBuffers();
+        ByteBuffer[] videoEncoderOutputBuffers = videoEncoder.getOutputBuffers();
         MediaCodec.BufferInfo videoDecoderOutputBufferInfo = new MediaCodec.BufferInfo();
         MediaCodec.BufferInfo videoEncoderOutputBufferInfo = new MediaCodec.BufferInfo();
 
@@ -779,8 +788,8 @@ public class Transcoder {
                     Log.d(TAG, "video decoder: returned buffer of size "
                             + videoDecoderOutputBufferInfo.size);
                 }
-                ByteBuffer decoderOutputBuffer =
-                        videoDecoderOutputBuffers[decoderOutputBufferIndex];
+//                ByteBuffer decoderOutputBuffer =
+//                        videoDecoderOutputBuffers[decoderOutputBufferIndex];
                 if ((videoDecoderOutputBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG)
                         != 0) {
                     if (VERBOSE) Log.d(TAG, "video decoder: codec config buffer");
