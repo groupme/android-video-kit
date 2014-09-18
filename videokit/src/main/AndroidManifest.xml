@@ -2,7 +2,6 @@
     package="com.groupme.android.videokit">
 
     <application>
-        <activity android:name=".VideoActivity" />
         <activity android:name=".TrimmerActivity" />
     </application>
 
