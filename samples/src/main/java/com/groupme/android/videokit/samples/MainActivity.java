@@ -11,10 +11,10 @@ import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
 
+import com.android.gallery3d.app.TrimVideo;
 import com.groupme.android.videokit.MediaInfo;
 import com.groupme.android.videokit.Transcoder;
 import com.groupme.android.videokit.InputSurface;
-import com.groupme.android.videokit.TrimmerActivity;
 
 import android.net.Uri;
 import android.opengl.GLES20;
@@ -120,14 +120,14 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
                 break;
             case REQUEST_PICK_VIDEO_FOR_TRIM:
                 if (resultCode == Activity.RESULT_OK) {
-                    Intent i = new Intent(this, TrimmerActivity.class);
+                    Intent i = new Intent(this, TrimVideo.class);
                     i.setData(data.getData());
                     startActivityForResult(i, REQUEST_TRIM_VIDEO);
                 }
                 break;
             case REQUEST_TRIM_VIDEO:
                 if (data != null) {
-                    Log.d("TRIM", String.format("Start: %s End: %s", data.getIntExtra(TrimmerActivity.START_TIME, -1), data.getIntExtra(TrimmerActivity.END_TIME, -1)));
+                    Log.d("TRIM", String.format("Start: %s End: %s", data.getIntExtra(TrimVideo.START_TIME, -1), data.getIntExtra(TrimVideo.END_TIME, -1)));
                 }
                 break;
             default:
