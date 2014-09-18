@@ -76,6 +76,7 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
             final File outputFile = new File(Environment.getExternalStorageDirectory(), "output.mp4");
 
             VideoTranscoder transcoder = new VideoTranscoder.Builder(videoUri, outputFile)
+                    .trim(5000, 10000)
                     .build(getApplicationContext());
 
             transcoder.start(new VideoTranscoder.Listener() {

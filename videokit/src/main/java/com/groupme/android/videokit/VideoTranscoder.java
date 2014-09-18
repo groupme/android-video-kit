@@ -33,6 +33,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 public class VideoTranscoder {
+    public static int TRIM_TIME_END = -1;
+
     private static final String KEY_ROTATION = "rotation";
 
     /** How long to wait for the next buffer to become available in microseconds. */
@@ -58,6 +60,9 @@ public class VideoTranscoder {
 
     private int mOutputAudioBitRate = Defaults.OUTPUT_AUDIO_BIT_RATE;
 
+    private long mTrimStartTime = 0;
+    private long mTrimEndTime = TRIM_TIME_END;
+
     private MediaFormat mOutputVideoFormat;
     private MediaFormat mOutputAudioFormat;
 
@@ -75,9 +80,7 @@ public class VideoTranscoder {
 
     // Buffers
     private ByteBuffer[] mVideoDecoderInputBuffers;
-//    private ByteBuffer[] mVideoDecoderOutputBuffers;
     private ByteBuffer[] mVideoEncoderOutputBuffers;
-
     private ByteBuffer[] mAudioDecoderInputBuffers;
     private ByteBuffer[] mAudioDecoderOutputBuffers;
     private ByteBuffer[] mAudioEncoderInputBuffers;
@@ -186,7 +189,6 @@ public class VideoTranscoder {
         boolean muxing = false;
 
         mVideoDecoderInputBuffers = mVideoDecoder.getInputBuffers();
-//        mVideoDecoderOutputBuffers = mVideoDecoder.getOutputBuffers();
         mVideoEncoderOutputBuffers = mVideoEncoder.getOutputBuffers();
 
         if (shouldIncludeAudio()) {
@@ -205,6 +207,14 @@ public class VideoTranscoder {
         if (shouldIncludeAudio()) {
             audioDecoderOutputBufferInfo = new MediaCodec.BufferInfo();
             audioEncoderOutputBufferInfo = new MediaCodec.BufferInfo();
+        }
+
+        if (mTrimStartTime > 0) {
+            mInputVideoComponent.getMediaExtractor().seekTo(mTrimStartTime * 1000, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+
+            if (shouldIncludeAudio()) {
+                mInputAudioComponent.getMediaExtractor().seekTo(mTrimStartTime * 1000, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+            }
         }
 
         // loop until all the encoding is finished
@@ -438,6 +448,17 @@ public class VideoTranscoder {
         LogUtils.d("%s extractor: returned buffer of size %d", type, size);
         LogUtils.d("%s extractor: returned buffer for time %d", type, presentationTime);
 
+        if (mTrimEndTime > 0 && presentationTime > (mTrimEndTime * 1000)) {
+            LogUtils.d("The current sample is over the trim time. Lets stop.");
+            decoder.queueInputBuffer(
+                    decoderInputBufferIndex,
+                    0,
+                    0,
+                    0,
+                    MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+            return true;
+        }
+
         if (size >= 0) {
             decoder.queueInputBuffer(
                     decoderInputBufferIndex,
@@ -478,7 +499,6 @@ public class VideoTranscoder {
 
         if (decoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
             LogUtils.d("video decoder: output buffers changed");
-//            mVideoDecoderOutputBuffers = mVideoDecoder.getOutputBuffers();
             return false;
         }
 
@@ -966,7 +986,7 @@ public class VideoTranscoder {
         private int mVideoIFrameInterval = Defaults.OUTPUT_VIDEO_IFRAME_INTERVAL;
 
         private long mStartTime = 0;
-        private long mEndTime = -1;
+        private long mEndTime = TRIM_TIME_END;
 
         public Builder(Uri srcUri, File destFile) {
             if (srcUri == null) {
@@ -1026,6 +1046,15 @@ public class VideoTranscoder {
             transcoder.mOutputVideoFrameRate = mVideoFrameRate;
             transcoder.mOutputVideoIFrameInterval = mVideoIFrameInterval;
             transcoder.mOutputFilePath = mDestFile.getAbsolutePath();
+
+            if (mStartTime > 0) {
+                transcoder.mTrimStartTime = mStartTime;
+            }
+
+            if (mEndTime != -1) {
+                transcoder.mTrimEndTime = mEndTime;
+            }
+
             return transcoder;
         }
     }
