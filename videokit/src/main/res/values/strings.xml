@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Video Kit</string>
+    <string name="done">Done</string>
+    <string name="loading_video">Loading video…</string>
+    <string name="accessibility_time_bar">Video player time bar</string>
+    <string name="accessibility_play_video">Play video</string>
+    <string name="accessibility_pause_video">Pause video</string>
+    <string name="accessibility_reload_video">Reload video</string>
 </resources>
