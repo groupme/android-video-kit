@@ -20,6 +20,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.util.Log;
 import android.view.MotionEvent;
 
 import com.groupme.android.videokit.R;
@@ -34,6 +35,7 @@ public class TrimTimeBar extends TimeBar {
     public static final int SCRUBBER_START = 1;
     public static final int SCRUBBER_CURRENT = 2;
     public static final int SCRUBBER_END = 3;
+    private final int mMinimumPadding;
 
     private int mPressedThumb = SCRUBBER_NONE;
 
@@ -51,6 +53,8 @@ public class TrimTimeBar extends TimeBar {
 
     private final Bitmap mTrimStartScrubber;
     private final Bitmap mTrimEndScrubber;
+    private int mMaxDuration = 30 * 1000; // 30 seconds
+
     public TrimTimeBar(Context context, Listener listener) {
         super(context, listener);
 
@@ -60,6 +64,7 @@ public class TrimTimeBar extends TimeBar {
         mTrimEndScrubberLeft = 0;
         mTrimStartScrubberTop = 0;
         mTrimEndScrubberTop = 0;
+        mMinimumPadding = getResources().getDimensionPixelSize(R.dimen.minimum_scrubber_padding);
 
         mTrimStartScrubber = BitmapFactory.decodeResource(getResources(),
                 R.drawable.text_select_handle_left);
@@ -272,7 +277,10 @@ public class TrimTimeBar extends TimeBar {
                                 if (mTrimStartScrubberLeft > mTrimEndScrubberLeft) {
                                     mTrimStartScrubberLeft = mTrimEndScrubberLeft;
                                 }
-                                lowerBound = mProgressBar.left;
+
+                                float minTime = mTrimEndTime - mMaxDuration;
+                                lowerBound = (int) Math.max(mProgressBar.left, minTime / mTotalTime * mProgressBar.width() + mProgressBar.left);
+
                                 mTrimStartScrubberLeft =
                                         clampScrubber(mTrimStartScrubberLeft,
                                                 trimStartScrubberTipOffset(),
@@ -282,7 +290,10 @@ public class TrimTimeBar extends TimeBar {
                                 break;
                             case SCRUBBER_END:
                                 mTrimEndScrubberLeft = x - mScrubberCorrection;
-                                upperBound = mProgressBar.right;
+
+                                float maxTime = mTrimStartTime + mMaxDuration;
+                                upperBound = (int) Math.min(mProgressBar.right, maxTime / mTotalTime * mProgressBar.width() + mProgressBar.left);
+
                                 mTrimEndScrubberLeft =
                                         clampScrubber(mTrimEndScrubberLeft,
                                                 trimEndScrubberTipOffset(),
