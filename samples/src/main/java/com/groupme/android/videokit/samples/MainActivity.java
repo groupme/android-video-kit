@@ -4,11 +4,14 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 
-import com.groupme.android.videokit.VideoTranscoder;
+import com.groupme.android.videokit.util.FrameExtractor;
+import com.groupme.android.videokit.util.LogUtils;
 import com.groupme.android.videokit.util.MediaInfo;
+import com.groupme.android.videokit.VideoTranscoder;
 import com.groupme.android.videokit.Transcoder;
 import com.groupme.android.videokit.TrimmerActivity;
 
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -17,6 +20,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,11 +31,17 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
     private static final int REQUEST_PICK_VIDEO = 0;
     private static final int REQUEST_PICK_VIDEO_FOR_TRIM = 1;
     private static final int REQUEST_TRIM_VIDEO = 2;
+    private static final int REQUEST_EXTRACT_FRAMES = 3;
 
     private ProgressDialog mProgressDialog;
     private TextView mInputFileSize;
     private TextView mOutputFileSize;
     private TextView mTimeToEncode;
+
+    private ImageView mImageView;
+    private TextView mFrameCountTextView;
+
+    private int mExtractedFrameCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +58,19 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
             }
         });
 
+        Button testVideoFrameExtract = (Button) findViewById(R.id.btn_extract_frames);
+        testVideoFrameExtract.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("video/*");
+                startActivityForResult(intent, REQUEST_EXTRACT_FRAMES);
+
+                mExtractedFrameCount = 0;
+                mFrameCountTextView.setText(Integer.toString(mExtractedFrameCount));
+            }
+        });
+
         Button testVideoTrim = (Button) findViewById(R.id.btn_trim_video);
         testVideoTrim.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -61,6 +84,8 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
         mInputFileSize = (TextView) findViewById(R.id.input_file_size);
         mOutputFileSize = (TextView) findViewById(R.id.output_file_size);
         mTimeToEncode = (TextView) findViewById(R.id.time_to_encode);
+        mImageView = (ImageView) findViewById(R.id.frame);
+        mFrameCountTextView = (TextView) findViewById(R.id.frame_count);
     }
 
     private void encodeVideo(final Uri videoUri) throws IOException {
@@ -121,6 +146,26 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
                 try {
                     encodeVideo(data.getData());
                 } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case REQUEST_EXTRACT_FRAMES:
+                try {
+                    if (resultCode == Activity.RESULT_OK) {
+                        Uri uri = data.getData();
+
+                        FrameExtractor.with(this).setFrameCount(20).setUri(uri).start(new FrameExtractor.Listener() {
+                            @Override
+                            public void onFrameAvailable(Bitmap bitmap) {
+                                LogUtils.d("Bitmap extracted");
+                                mImageView.setImageBitmap(bitmap);
+
+                                mExtractedFrameCount++;
+                                mFrameCountTextView.setText(Integer.toString(mExtractedFrameCount));
+                            }
+                        });
+                    }
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
                 break;

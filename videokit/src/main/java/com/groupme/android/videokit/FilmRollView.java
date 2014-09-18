@@ -26,6 +26,8 @@ import android.view.ViewConfiguration;
 import android.view.WindowManager;
 import android.widget.MediaController;
 
+import com.groupme.android.videokit.util.FrameExtractor;
+
 import java.util.ArrayList;
 
 @TargetApi(Build.VERSION_CODES.GINGERBREAD_MR1)
@@ -46,6 +48,7 @@ public class FilmRollView extends View {
     private static final String KEY_HAS_REACHED_END = "is_at_end";
     private static final String KEY_SAVED_BITMAP_SIZE = "bitmap_size";
     private static final String KEY_SAVED_MORE_BITMAP_SIZE = "more_bitmap_size";
+    private static final String KEY_VIDEO_URI = "video_uri";
     private static Paint sBitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private static Paint sThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static Paint sWhite75Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -85,6 +88,7 @@ public class FilmRollView extends View {
     private int mDuration;
     private boolean mIsPlaying;
     private boolean mFrameRetrieverStarted;
+    private Uri mVideoUri;
 
     private static enum Thumb {
         MIN, MAX
@@ -116,6 +120,7 @@ public class FilmRollView extends View {
     }
 
     public void setVideoUri(Uri uri) {
+        mVideoUri = uri;
         mMetaDataExtractor = new MediaMetadataRetriever();
 
         if (uri.getScheme().equals(ContentResolver.SCHEME_FILE)) {
@@ -135,74 +140,6 @@ public class FilmRollView extends View {
     public int getEndTime() {
         return (int) (mNormalizedMaxValue * mDuration);
     }
-
-    Thread mFrameRetriever = new Thread(new Runnable() {
-        @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
-        @Override
-        public void run() {
-            float duration = Float.parseFloat(mMetaDataExtractor.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
-
-            int rotation = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 ?
-                    Integer.parseInt(mMetaDataExtractor.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)) :
-                    0;
-            float frameHeight = Float.parseFloat(mMetaDataExtractor.extractMetadata(
-                    rotation == 90 || rotation == 270 ?
-                            MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH :
-                            MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
-            float frameWidth = Float.parseFloat(mMetaDataExtractor.extractMetadata(
-                    rotation == 90 || rotation == 270 ?
-                            MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT :
-                            MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
-            mScaledFrameWidth = (int) (getFilmRollHeight() * frameWidth / frameHeight);
-            mFrameCount = (int) ((float) getFilmRollSmallerWidth() / mScaledFrameWidth);
-            // The time between frames in micro-seconds
-            int timeBetweenFrames = (int) (duration / mFrameCount) * 1000;
-            int timeOffset = 0;
-
-            for (int i = mBitmaps.size(); i < mFrameCount; i++) {
-                if (mFrameRetriever.isInterrupted()) {
-                    return;
-                }
-
-                Bitmap frame = mMetaDataExtractor.getFrameAtTime(timeOffset);
-                mBitmaps.add(frame);
-                timeOffset += timeBetweenFrames;
-
-                if (!mIsPlaying) {
-                    post(new Runnable() {
-                        @Override
-                        public void run() {
-                            invalidate();
-                        }
-                    });
-                }
-            }
-
-            mLandscapeFrameCount = (int) ((float) getFilmRollLargerWidth() / mScaledFrameWidth);
-            timeBetweenFrames = (int) (duration / mLandscapeFrameCount) * 1000;
-            timeOffset = 0;
-
-            for (int i = mMoreBitmaps.size(); i < mLandscapeFrameCount; i++) {
-                if (mFrameRetriever.isInterrupted()) {
-                    return;
-                }
-
-                Bitmap frame = mMetaDataExtractor.getFrameAtTime(timeOffset);
-                mMoreBitmaps.add(frame);
-                timeOffset += timeBetweenFrames;
-
-                if (!mIsPlaying) {
-                    post(new Runnable() {
-                        @Override
-                        public void run() {
-                            invalidate();
-                        }
-                    });
-                }
-            }
-        }
-
-    });
 
     private Handler mHandler = new Handler() {
         @Override
@@ -258,7 +195,38 @@ public class FilmRollView extends View {
 
         if (!mFrameRetrieverStarted) {
             mFrameRetrieverStarted = true;
-            mFrameRetriever.start();
+
+            int rotation = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 ?
+                    Integer.parseInt(mMetaDataExtractor.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)) :
+                    0;
+            float frameHeight = Float.parseFloat(mMetaDataExtractor.extractMetadata(
+                    rotation == 90 || rotation == 270 ?
+                            MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH :
+                            MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+            float frameWidth = Float.parseFloat(mMetaDataExtractor.extractMetadata(
+                    rotation == 90 || rotation == 270 ?
+                            MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT :
+                            MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
+            mScaledFrameWidth = (int) (getFilmRollHeight() * frameWidth / frameHeight);
+            mFrameCount = (int) ((float) getFilmRollSmallerWidth() / mScaledFrameWidth);
+            // The time between frames in micro-seconds
+            mLandscapeFrameCount = (int) ((float) getFilmRollLargerWidth() / mScaledFrameWidth);
+
+            FrameExtractor.with(getContext()).setFrameCount(mFrameCount).setUri(mVideoUri).start(new FrameExtractor.Listener() {
+                @Override
+                public void onFrameAvailable(Bitmap bitmap) {
+                    mBitmaps.add(bitmap);
+                    invalidate();
+                }
+            });
+
+//            FrameExtractor.with(getContext()).setFrameCount(mLandscapeFrameCount).setUri(mVideoUri).start(new FrameExtractor.Listener() {
+//                @Override
+//                public void onFrameAvailable(Bitmap bitmap) {
+//                    mMoreBitmaps.add(bitmap);
+//                    invalidate();
+//                }
+//            });
         }
 
         drawBorderFrame(canvas);
@@ -617,10 +585,6 @@ public class FilmRollView extends View {
         Bundle bundle = new Bundle();
         bundle.putParcelable(KEY_INSTANCE_STATE, super.onSaveInstanceState());
 
-        if (mFrameRetriever.isAlive()) {
-            mFrameRetriever.interrupt();
-        }
-
         int size = mBitmaps.size();
         bundle.putInt(KEY_SAVED_BITMAP_SIZE, size);
 
@@ -644,6 +608,8 @@ public class FilmRollView extends View {
         bundle.putBoolean(KEY_IS_SEEK_AT_BEGINNING, mSeekAtBeginning);
         bundle.putBoolean(KEY_IS_PLAYING, mIsPlaying);
         bundle.putBoolean(KEY_HAS_REACHED_END, mHasReachedEnd);
+        bundle.putParcelable(KEY_VIDEO_URI, mVideoUri);
+
         mHandler.sendEmptyMessage(STOP);
 
         return bundle;
@@ -662,6 +628,7 @@ public class FilmRollView extends View {
             mSeekAtBeginning = bundle.getBoolean(KEY_IS_SEEK_AT_BEGINNING);
             mIsPlaying = bundle.getBoolean(KEY_IS_PLAYING);
             mHasReachedEnd = bundle.getBoolean(KEY_HAS_REACHED_END);
+            mVideoUri = bundle.getParcelable(KEY_VIDEO_URI);
 
             if (mIsPlaying) {
                 mHandler.sendEmptyMessage(SHOW_PROGRESS);
