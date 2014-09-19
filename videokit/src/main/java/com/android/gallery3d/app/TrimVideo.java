@@ -168,8 +168,8 @@ public class TrimVideo extends Activity implements
         // If the video position is smaller than the starting point of trimming,
         // correct it.
         if (mVideoPosition < mTrimStartTime) {
-            mVideoView.seekTo(mTrimStartTime);
             mVideoPosition = mTrimStartTime;
+            mVideoView.seekTo(mTrimStartTime);
         }
         // If the position is bigger than the end point of trimming, show the
         // replay button and pause.
@@ -196,16 +196,6 @@ public class TrimVideo extends Activity implements
     private void pauseVideo() {
         mVideoView.pause();
         mController.showPaused();
-    }
-    private boolean isModified() {
-        int delta = mTrimEndTime - mTrimStartTime;
-        // Considering that we only trim at sync frame, we don't want to trim
-        // when the time interval is too short or too close to the origin.
-        if (delta < 100 || Math.abs(mVideoView.getDuration() - delta) < 100) {
-            return false;
-        } else {
-            return true;
-        }
     }
 
     @Override
