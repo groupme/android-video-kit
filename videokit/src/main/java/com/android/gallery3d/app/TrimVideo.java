@@ -169,13 +169,11 @@ public class TrimVideo extends Activity implements
         // correct it.
         if (mVideoPosition < mTrimStartTime) {
             mVideoPosition = mTrimStartTime;
-            mVideoView.seekTo(mTrimStartTime);
         }
         // If the position is bigger than the end point of trimming, show the
         // replay button and pause.
         if (mVideoPosition >= mTrimEndTime && mTrimEndTime > 0) {
             if (mVideoPosition > mTrimEndTime) {
-                mVideoView.seekTo(mTrimEndTime);
                 mVideoPosition = mTrimEndTime;
             }
             mController.showEnded();
@@ -185,7 +183,11 @@ public class TrimVideo extends Activity implements
         if (duration > 0 && mTrimEndTime == 0) {
             mTrimEndTime = duration;
         }
-        mController.setTimes(mVideoPosition, duration, mTrimStartTime, mTrimEndTime);
+
+        if (mVideoView.isPlaying()) {
+            mController.setTimes(mVideoPosition, duration, mTrimStartTime, mTrimEndTime);
+        }
+
         return mVideoPosition;
     }
     private void playVideo() {

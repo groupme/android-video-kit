@@ -278,28 +278,50 @@ public class TrimTimeBar extends TimeBar {
                                     mTrimStartScrubberLeft = mTrimEndScrubberLeft;
                                 }
 
-                                float minTime = mTrimEndTime - mMaxDuration;
-                                lowerBound = (int) Math.max(mProgressBar.left, minTime / mTotalTime * mProgressBar.width() + mProgressBar.left);
-
                                 mTrimStartScrubberLeft =
                                         clampScrubber(mTrimStartScrubberLeft,
                                                 trimStartScrubberTipOffset(),
-                                                lowerBound, upperBound);
+                                                mProgressBar.left, upperBound);
                                 seekToTime = getScrubberTime(mTrimStartScrubberLeft,
                                         trimStartScrubberTipOffset());
+
+                                float minTime = mTrimEndTime - mMaxDuration;
+                                lowerBound = (int) Math.max(mProgressBar.left, minTime / mTotalTime * mProgressBar.width() + mProgressBar.left);
+
+                                if (mTrimStartScrubberLeft + trimStartScrubberTipOffset() <= lowerBound) {
+                                    float maxTime = mTrimStartTime + mMaxDuration;
+                                    upperBound = (int) Math.min(mProgressBar.right, maxTime / mTotalTime * mProgressBar.width() + mProgressBar.left);
+
+                                    mTrimEndScrubberLeft = clampScrubber(mTrimEndScrubberLeft,
+                                            trimEndScrubberTipOffset(),
+                                            mTrimStartScrubberLeft + trimStartScrubberTipOffset(),
+                                            upperBound);
+                                }
+
                                 break;
                             case SCRUBBER_END:
                                 mTrimEndScrubberLeft = x - mScrubberCorrection;
 
-                                float maxTime = mTrimStartTime + mMaxDuration;
-                                upperBound = (int) Math.min(mProgressBar.right, maxTime / mTotalTime * mProgressBar.width() + mProgressBar.left);
-
                                 mTrimEndScrubberLeft =
                                         clampScrubber(mTrimEndScrubberLeft,
                                                 trimEndScrubberTipOffset(),
-                                                lowerBound, upperBound);
+                                                lowerBound, mProgressBar.right);
                                 seekToTime = getScrubberTime(mTrimEndScrubberLeft,
                                         trimEndScrubberTipOffset());
+
+                                float maxTime = mTrimStartTime + mMaxDuration;
+                                upperBound = (int) Math.min(mProgressBar.right, maxTime / mTotalTime * mProgressBar.width() + mProgressBar.left);
+
+                                if (mTrimEndScrubberLeft + trimEndScrubberTipOffset() >= upperBound) {
+                                    minTime = mTrimEndTime - mMaxDuration;
+                                    lowerBound = (int) Math.max(mProgressBar.left, minTime / mTotalTime * mProgressBar.width() + mProgressBar.left);
+
+                                    mTrimStartScrubberLeft = clampScrubber(mTrimStartScrubberLeft,
+                                            trimStartScrubberTipOffset(),
+                                            lowerBound,
+                                            mTrimEndScrubberLeft + trimEndScrubberTipOffset());
+                                }
+
                                 break;
                         }
                         updateTimeFromPos();
