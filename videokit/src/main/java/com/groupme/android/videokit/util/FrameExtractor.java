@@ -146,12 +146,17 @@ public class FrameExtractor {
         final int TIMEOUT_USEC = 10000;
         ByteBuffer[] decoderInputBuffers = decoder.getInputBuffers();
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+
         int inputChunk = 0;
         int decodeCount = 0;
+        int extractedFrameCount = 0;
+
         long frameSaveTime = 0;
+
 
         boolean outputDone = false;
         boolean inputDone = false;
+
         while (!outputDone) {
             if (VERBOSE) LogUtils.d("loop");
 
@@ -175,22 +180,16 @@ public class FrameExtractor {
                                     extractor.getSampleTrackIndex() + ", expected " + trackIndex);
                         }
                         long presentationTimeUs = extractor.getSampleTime();
-                        decoder.queueInputBuffer(inputBufIndex, 0, chunkSize,
+                        decoder.queueInputBuffer(inputBufIndex,  0, chunkSize,
                                 presentationTimeUs, 0 /*flags*/);
                         if (VERBOSE) {
                             LogUtils.d("submitted frame " + inputChunk + " to dec, size=" +
                                     chunkSize);
                         }
                         inputChunk++;
-                        boolean moreToExtract = extractor.advance();
 
-                        if (decodeCount > 0) {
-                            if (moreToExtract) {
-                                extractor.seekTo(decodeCount * interval, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
-                            } else {
-                                outputDone = true;
-                            }
-                        }
+                        extractedFrameCount++;
+                        extractor.seekTo(extractedFrameCount * interval, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
                     }
                 } else {
                     if (VERBOSE) LogUtils.d("input buffer not available");
@@ -230,23 +229,21 @@ public class FrameExtractor {
                         outputSurface.awaitNewImage();
                         outputSurface.drawImage(true);
 
-//                        if (decodeCount < MAX_FRAMES) {
-//                            File outputFile = new File(FILES_DIR,
-//                                    String.format("frame-%02d.png", decodeCount));
-                            long startWhen = System.nanoTime();
-                            final Bitmap bitmap = outputSurface.getFrame();
 
-                            frameSaveTime += System.nanoTime() - startWhen;
+                        long startWhen = System.nanoTime();
+                        final Bitmap bitmap = outputSurface.getFrame();
 
-                            if (mListener != null) {
-                                mHandler.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        mListener.onFrameAvailable(bitmap);
-                                    }
-                                });
-                            }
-//                        }
+                        frameSaveTime += System.nanoTime() - startWhen;
+
+                        if (mListener != null) {
+                            mHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mListener.onFrameAvailable(bitmap);
+                                }
+                            });
+                        }
+
                         decodeCount++;
 
                         if (decodeCount == mFrameCount) {
