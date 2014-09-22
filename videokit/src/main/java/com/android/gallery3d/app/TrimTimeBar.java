@@ -22,6 +22,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 
@@ -58,6 +59,7 @@ public class TrimTimeBar extends TimeBar {
     private int mMaxDuration;
     private int mProgressY;
     private Rect mSelectionBar;
+    private int mMinDuration = 1 * 1000; // 1 second
 
     public TrimTimeBar(Context context, Listener listener) {
         super(context, listener);
@@ -189,7 +191,7 @@ public class TrimTimeBar extends TimeBar {
             if (mShowTimes) {
                 margin += mTimeBounds.width();
             }
-            mProgressY = h / 4;
+            mProgressY = h / 2;
             int scrubberY = mProgressY - mScrubber.getHeight() / 2 + 1;
             mScrubberTop = scrubberY;
             mTrimStartScrubberTop = mProgressY - mTrimStartScrubber.getHeight() / 2 + 1;
@@ -289,6 +291,7 @@ public class TrimTimeBar extends TimeBar {
                                     mTrimStartScrubberLeft = mTrimEndScrubberLeft;
                                 }
 
+                                upperBound = (int) (upperBound - (float) mMinDuration / mTotalTime * mProgressBar.width());
                                 mTrimStartScrubberLeft =
                                         clampScrubber(mTrimStartScrubberLeft,
                                                 trimStartScrubberTipOffset(),
@@ -313,6 +316,7 @@ public class TrimTimeBar extends TimeBar {
                             case SCRUBBER_END:
                                 mTrimEndScrubberLeft = x - mScrubberCorrection;
 
+                                lowerBound = (int) (lowerBound + (float) mMinDuration / mTotalTime * mProgressBar.width());
                                 mTrimEndScrubberLeft =
                                         clampScrubber(mTrimEndScrubberLeft,
                                                 trimEndScrubberTipOffset(),
