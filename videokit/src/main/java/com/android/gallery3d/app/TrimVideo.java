@@ -21,6 +21,7 @@ import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.drawable.ColorDrawable;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -58,7 +59,6 @@ public class TrimVideo extends Activity implements
     public static final String KEY_TRIM_START = "trim_start";
     public static final String KEY_TRIM_END = "trim_end";
     public static final String KEY_VIDEO_POSITION = "video_pos";
-    private boolean mHasPaused = false;
     private int mDuration;
 
     @Override
@@ -74,6 +74,7 @@ public class TrimVideo extends Activity implements
             actionBar.setDisplayOptions(0, displayOptions);
             displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM;
             actionBar.setDisplayOptions(displayOptions, displayOptions);
+            actionBar.setBackgroundDrawable(new ColorDrawable(R.color.black85));
         }
 
         Intent intent = getIntent();
@@ -105,16 +106,12 @@ public class TrimVideo extends Activity implements
     @Override
     public void onResume() {
         super.onResume();
-        if (mHasPaused) {
-            mVideoView.seekTo(mVideoPosition);
-            mVideoView.resume();
-            mHasPaused = false;
-        }
+        mVideoView.seekTo(mVideoPosition);
+        mVideoView.resume();
         mHandler.post(mProgressChecker);
     }
     @Override
     public void onPause() {
-        mHasPaused = true;
         mHandler.removeCallbacksAndMessages(null);
         mVideoPosition = mVideoView.getCurrentPosition();
         mVideoView.suspend();
