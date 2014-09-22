@@ -5,10 +5,8 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 
 import com.android.gallery3d.app.TrimVideo;
-import com.groupme.android.videokit.util.LogUtils;
 import com.groupme.android.videokit.util.MediaInfo;
 import com.groupme.android.videokit.VideoTranscoder;
-import com.groupme.android.videokit.Transcoder;
 
 import android.net.Uri;
 import android.os.Bundle;
@@ -24,7 +22,7 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.IOException;
 
-public class MainActivity extends Activity implements Transcoder.OnVideoTranscodedListener {
+public class MainActivity extends Activity {
     private static final int REQUEST_PICK_VIDEO = 0;
     private static final int REQUEST_PICK_VIDEO_FOR_TRIM = 1;
     private static final int REQUEST_TRIM_VIDEO = 2;
@@ -170,36 +168,5 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
         mProgressDialog.setCancelable(false);
         mProgressDialog.setMessage(String.format("Encoding Video.. (%d secs)", mediaInfo.getDuration()));
         mProgressDialog.show();
-    }
-
-    @Override
-    public void onVideoTranscoded(final String outputFile, double inputFileSize, double outputFileSize, double timeToEncode) {
-        if (mProgressDialog.isShowing()) {
-            mProgressDialog.dismiss();
-        }
-
-        mInputFileSize.setText(String.format("Input file: %sMB", inputFileSize));
-        mOutputFileSize.setText(String.format("Output file: %sMB", outputFileSize));
-        mTimeToEncode.setText(String.format("Time to encode: %ss", timeToEncode));
-
-        Button playVideo = (Button) findViewById(R.id.btn_play);
-        playVideo.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(android.content.Intent.ACTION_VIEW);
-                intent.setDataAndType(Uri.fromFile(new File(outputFile)), "video/*");
-                startActivity(intent);
-
-            }
-        });
-    }
-
-    @Override
-    public void onError() {
-        if (mProgressDialog.isShowing()) {
-            mProgressDialog.dismiss();
-        }
-
-        Toast.makeText(this, "Error encoding video :(", Toast.LENGTH_LONG).show();
     }
 }

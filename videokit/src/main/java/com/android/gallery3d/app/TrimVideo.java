@@ -149,6 +149,7 @@ public class TrimVideo extends Activity implements
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.done) {
             Intent results = new Intent();
+            results.setData(mUri);
             results.putExtra(START_TIME, mTrimStartTime);
             results.putExtra(END_TIME, mTrimEndTime);
             setResult(Activity.RESULT_OK, results);

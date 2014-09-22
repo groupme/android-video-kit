@@ -156,6 +156,28 @@ public class VideoTranscoder {
         }).start();
     }
 
+    public boolean startSync() {
+        if (mContext == null) {
+            throw new IllegalStateException("Context cannot be null");
+        }
+
+        if (mSrcUri == null) {
+            throw new IllegalStateException("Source Uri cannot be null. Make sure to call source()");
+        }
+
+        mStartTime = System.currentTimeMillis();
+
+        try {
+            setup();
+            transcode();
+            cleanup();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private void setup() throws IOException {
         createComponents();
 
