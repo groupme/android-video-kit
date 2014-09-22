@@ -116,7 +116,7 @@ public class TrimTimeBar extends TimeBar {
 
     private void initTrimTimeIfNeeded() {
         if (mTotalTime > 0 && mTrimEndTime == 0) {
-            mTrimEndTime = mTotalTime;
+            mTrimEndTime = Math.min(mTotalTime, mMaxDuration);
         }
     }
 

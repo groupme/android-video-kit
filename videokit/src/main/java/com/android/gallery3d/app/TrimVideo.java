@@ -18,8 +18,10 @@ import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
@@ -56,6 +58,7 @@ public class TrimVideo extends Activity implements
     public static final String KEY_TRIM_END = "trim_end";
     public static final String KEY_VIDEO_POSITION = "video_pos";
     private boolean mHasPaused = false;
+    private int mDuration;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -81,6 +84,17 @@ public class TrimVideo extends Activity implements
         ((ViewGroup) rootView).addView(mController.getView());
         mController.setListener(this);
         mController.setCanReplay(true);
+
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+
+        if (ContentResolver.SCHEME_FILE.equals(mUri.getScheme())) {
+            retriever.setDataSource(mUri.getPath());
+        } else {
+            retriever.setDataSource(mContext, mUri);
+        }
+
+        mDuration = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+        mController.setTimes(0, mDuration, 0, 0);
         mVideoView.setOnErrorListener(this);
         mVideoView.setOnCompletionListener(this);
         mVideoView.setVideoURI(mUri);
@@ -179,13 +193,9 @@ public class TrimVideo extends Activity implements
             mController.showEnded();
             mVideoView.pause();
         }
-        int duration = mVideoView.getDuration();
-        if (duration > 0 && mTrimEndTime == 0) {
-            mTrimEndTime = duration;
-        }
 
         if (mVideoView.isPlaying()) {
-            mController.setTimes(mVideoPosition, duration, mTrimStartTime, mTrimEndTime);
+            mController.setTimes(mVideoPosition, mDuration, mTrimStartTime, mTrimEndTime);
         }
 
         return mVideoPosition;
