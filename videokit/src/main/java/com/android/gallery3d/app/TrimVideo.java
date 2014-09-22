@@ -45,6 +45,7 @@ public class TrimVideo extends Activity implements
 
     public static final String START_TIME = "com.groupme.android.videokit.START_TIME";
     public static final String END_TIME = "com.groupme.android.videokit.END_TIME";
+    private final int mMaxDuration = 30 * 1000; // 30 seconds
     private VideoView mVideoView;
     private TrimControllerOverlay mController;
     private Context mContext;
@@ -80,7 +81,7 @@ public class TrimVideo extends Activity implements
         setContentView(R.layout.trim_view);
         View rootView = findViewById(R.id.trim_view_root);
         mVideoView = (VideoView) rootView.findViewById(R.id.surface_view);
-        mController = new TrimControllerOverlay(mContext);
+        mController = new TrimControllerOverlay(mContext, mMaxDuration);
         ((ViewGroup) rootView).addView(mController.getView());
         mController.setListener(this);
         mController.setCanReplay(true);
@@ -95,6 +96,7 @@ public class TrimVideo extends Activity implements
 
         mDuration = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
         mController.setTimes(0, mDuration, 0, 0);
+        mTrimEndTime = Math.min(mDuration, mMaxDuration);
         mVideoView.setOnErrorListener(this);
         mVideoView.setOnCompletionListener(this);
         mVideoView.setVideoURI(mUri);

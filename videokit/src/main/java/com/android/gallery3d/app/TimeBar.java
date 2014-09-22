@@ -71,7 +71,7 @@ public class TimeBar extends View {
         mProgressPaint = new Paint();
         mProgressPaint.setColor(0xFF808080);
         mPlayedPaint = new Paint();
-        mPlayedPaint.setColor(0xFFFFFFFF);
+        mPlayedPaint.setColor(0xFF33B5E5);
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
         float textSizeInPx = metrics.density * TEXT_SIZE_IN_DP;
         mTimeTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);

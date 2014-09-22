@@ -20,6 +20,8 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.util.Log;
 import android.view.MotionEvent;
 
@@ -36,6 +38,7 @@ public class TrimTimeBar extends TimeBar {
     public static final int SCRUBBER_CURRENT = 2;
     public static final int SCRUBBER_END = 3;
 
+    private final Paint mTrimSelectionPaint;
     private int mPressedThumb = SCRUBBER_NONE;
 
     // On touch event, the setting order is Scrubber Position -> Time ->
@@ -52,12 +55,15 @@ public class TrimTimeBar extends TimeBar {
 
     private final Bitmap mTrimStartScrubber;
     private final Bitmap mTrimEndScrubber;
-    private int mMaxDuration = 30 * 1000; // 30 seconds
+    private int mMaxDuration;
     private int mProgressY;
+    private Rect mSelectionBar;
 
     public TrimTimeBar(Context context, Listener listener) {
         super(context, listener);
-
+        mSelectionBar = new Rect();
+        mTrimSelectionPaint = new Paint();
+        mTrimSelectionPaint.setColor(0xFFFFFFFF);
         mTrimStartTime = 0;
         mTrimEndTime = 0;
         mTrimStartScrubberLeft = 0;
@@ -93,10 +99,15 @@ public class TrimTimeBar extends TimeBar {
     private void updatePlayedBarAndScrubberFromTime() {
         // According to the Time, update the Played Bar
         mPlayedBar.set(mProgressBar);
+        mSelectionBar.set(mProgressBar);
+
         if (mTotalTime > 0) {
             // set playedBar according to the trim time.
             mPlayedBar.left = getBarPosFromTime(mTrimStartTime);
             mPlayedBar.right = getBarPosFromTime(mCurrentTime);
+            mSelectionBar.left = getBarPosFromTime(mTrimStartTime);
+            mSelectionBar.right = getBarPosFromTime(mTrimEndTime);
+
             if (!mScrubbing) {
                 mScrubberLeft = mPlayedBar.right - mScrubber.getWidth() / 2;
                 mTrimStartScrubberLeft = mPlayedBar.left - trimStartScrubberTipOffset();
@@ -194,6 +205,7 @@ public class TrimTimeBar extends TimeBar {
     protected void onDraw(Canvas canvas) {
         // draw progress bars
         canvas.drawRect(mProgressBar, mProgressPaint);
+        canvas.drawRect(mSelectionBar, mTrimSelectionPaint);
         canvas.drawRect(mPlayedBar, mPlayedPaint);
 
         if (mShowTimes) {
@@ -368,5 +380,9 @@ public class TrimTimeBar extends TimeBar {
             }
         }
         return false;
+    }
+
+    public void setMaxDuration(int maxDuration) {
+        mMaxDuration = maxDuration;
     }
 }
