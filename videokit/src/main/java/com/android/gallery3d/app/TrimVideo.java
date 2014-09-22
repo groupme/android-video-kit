@@ -38,7 +38,7 @@ import android.widget.VideoView;
 
 import com.groupme.android.videokit.R;
 
-@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+@TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 public class TrimVideo extends Activity implements
         MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener,
@@ -46,6 +46,7 @@ public class TrimVideo extends Activity implements
 
     public static final String START_TIME = "com.groupme.android.videokit.START_TIME";
     public static final String END_TIME = "com.groupme.android.videokit.END_TIME";
+    public static final String EXTRA_ICON_RESID = "com.groupme.android.videokit.extra.ICON_RESID";
     private final int mMaxDuration = 30 * 1000; // 30 seconds
     private VideoView mVideoView;
     private TrimControllerOverlay mController;
@@ -75,6 +76,14 @@ public class TrimVideo extends Activity implements
             displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM;
             actionBar.setDisplayOptions(displayOptions, displayOptions);
             actionBar.setBackgroundDrawable(new ColorDrawable(R.color.black85));
+            actionBar.setTitle(R.string.edit_video);
+            actionBar.setDisplayHomeAsUpEnabled(true);
+
+            int iconResId = getIntent().getIntExtra(EXTRA_ICON_RESID, -1);
+
+            if (iconResId != -1) {
+                actionBar.setIcon(iconResId);
+            }
         }
 
         Intent intent = getIntent();
@@ -153,6 +162,9 @@ public class TrimVideo extends Activity implements
             results.putExtra(START_TIME, mTrimStartTime);
             results.putExtra(END_TIME, mTrimEndTime);
             setResult(Activity.RESULT_OK, results);
+            finish();
+            return true;
+        } else if (item.getItemId() == android.R.id.home) {
             finish();
             return true;
         } else {
