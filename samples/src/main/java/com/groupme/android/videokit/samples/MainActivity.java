@@ -112,10 +112,12 @@ public class MainActivity extends Activity implements Transcoder.OnVideoTranscod
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
             case REQUEST_PICK_VIDEO:
-                try {
-                    encodeVideo(data.getData());
-                } catch (IOException e) {
-                    e.printStackTrace();
+                if (resultCode == Activity.RESULT_OK) {
+                    try {
+                        encodeVideo(data.getData());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
                 break;
             case REQUEST_PICK_VIDEO_FOR_TRIM:

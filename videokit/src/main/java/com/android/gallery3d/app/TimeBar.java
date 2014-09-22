@@ -80,7 +80,7 @@ public class TimeBar extends View {
         mTimeTextPaint.setTextAlign(Paint.Align.CENTER);
         mTimeBounds = new Rect();
         mTimeTextPaint.getTextBounds("0:00:00", 0, 7, mTimeBounds);
-        mScrubber = BitmapFactory.decodeResource(getResources(), R.drawable.scrubber_knob);
+        mScrubber = BitmapFactory.decodeResource(getResources(), R.drawable.play_scrubber);
         mScrubberPadding = (int) (metrics.density * SCRUBBER_PADDING_IN_DP);
         mVPaddingInPx = (int) (metrics.density * V_PADDING_IN_DP);
     }
