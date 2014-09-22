@@ -1,4 +1,4 @@
-package com.groupme.android.videokit;
+package com.groupme.android.videokit.util;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -106,7 +106,7 @@ public class MediaInfo {
         return VALUE_NOT_AVAILABLE;
     }
 
-    Uri getMediaUri() {
+    public Uri getMediaUri() {
         return mMediaUri;
     }
 

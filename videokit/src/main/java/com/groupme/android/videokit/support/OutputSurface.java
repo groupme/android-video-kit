@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.groupme.android.videokit;
+package com.groupme.android.videokit.support;
 
+import android.annotation.TargetApi;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
 import android.opengl.EGLConfig;
@@ -24,7 +25,6 @@ import android.opengl.EGLDisplay;
 import android.opengl.EGLSurface;
 import android.util.Log;
 import android.view.Surface;
-
 
 /**
  * Holds state associated with a Surface used for MediaCodec decoder output.
@@ -41,7 +41,8 @@ import android.view.Surface;
  * By default, the Surface will be using a BufferQueue in asynchronous mode, so we
  * can potentially drop frames.
  */
-class OutputSurface implements SurfaceTexture.OnFrameAvailableListener {
+@TargetApi(17)
+public class OutputSurface implements SurfaceTexture.OnFrameAvailableListener {
     private static final String TAG = "OutputSurface";
     private static final boolean VERBOSE = false;
 

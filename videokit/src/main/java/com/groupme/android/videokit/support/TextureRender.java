@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.groupme.android.videokit;
+package com.groupme.android.videokit.support;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
+import android.annotation.TargetApi;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;
@@ -34,7 +35,9 @@ import android.util.Log;
 /**
  * Code for rendering a texture onto a surface using OpenGL ES 2.0.
  */
-class TextureRender {
+
+@TargetApi(11)
+public class TextureRender {
     private static final String TAG = "TextureRender";
 
     private static final int FLOAT_SIZE_BYTES = 4;
