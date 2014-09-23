@@ -28,12 +28,15 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.Toast;
 import android.widget.VideoView;
 
 import com.groupme.android.videokit.R;
@@ -46,8 +49,10 @@ public class TrimVideo extends Activity implements
 
     public static final String START_TIME = "com.groupme.android.videokit.START_TIME";
     public static final String END_TIME = "com.groupme.android.videokit.END_TIME";
-    public static final String EXTRA_ICON_RESID = "com.groupme.android.videokit.extra.ICON_RESID";
-    private final int mMaxDuration = 30 * 1000; // 30 seconds
+    public static final String EXTRA_MESSAGE = "com.groupme.android.videokit.extra.MESSAGE";
+    public static final String EXTRA_MAX_DURATION = "com.groupme.android.videokit.extra.MAX_DURATION";
+    public static final String EXTRA_ICON_RES_ID = "com.groupme.android.videokit.extra.ICON_RES_ID";
+    private int mMaxDuration = 30 * 1000; // 30 seconds
     private VideoView mVideoView;
     private TrimControllerOverlay mController;
     private Context mContext;
@@ -77,12 +82,25 @@ public class TrimVideo extends Activity implements
             actionBar.setDisplayOptions(displayOptions, displayOptions);
             actionBar.setBackgroundDrawable(new ColorDrawable(R.color.black85));
             actionBar.setTitle(R.string.edit_video);
+            actionBar.setDisplayShowHomeEnabled(true);
             actionBar.setDisplayHomeAsUpEnabled(true);
 
-            int iconResId = getIntent().getIntExtra(EXTRA_ICON_RESID, -1);
+            mMaxDuration = getIntent().getIntExtra(EXTRA_MAX_DURATION, mMaxDuration);
+            int iconResid = getIntent().getIntExtra(EXTRA_ICON_RES_ID, -1);
 
-            if (iconResId != -1) {
-                actionBar.setIcon(iconResId);
+            if (iconResid != -1) {
+                actionBar.setIcon(iconResid);
+            }
+
+            if (savedInstanceState == null) {
+                String message = getIntent().getStringExtra(EXTRA_MESSAGE);
+
+                if (!TextUtils.isEmpty(message)) {
+                    Toast toast = Toast.makeText(this, message, Toast.LENGTH_LONG);
+                    int toastPadding = getResources().getDimensionPixelSize(R.dimen.toast_padding);
+                    toast.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, toastPadding);
+                    toast.show();
+                }
             }
         }
 

@@ -17,7 +17,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
@@ -89,6 +88,9 @@ public class MainActivity extends Activity {
                     mSrcUri = data.getData();
 
                     Intent i = new Intent(this, TrimVideo.class);
+                    i.putExtra(TrimVideo.EXTRA_MESSAGE, "Welcome to the trimmer!");
+                    i.putExtra(TrimVideo.EXTRA_ICON_RES_ID, R.drawable.ic_edit_video);
+                    i.putExtra(TrimVideo.EXTRA_MAX_DURATION, 40 * 1000);
                     i.setData(mSrcUri);
                     startActivityForResult(i, REQUEST_TRIM_VIDEO);
                 }
