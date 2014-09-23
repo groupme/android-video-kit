@@ -36,6 +36,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
@@ -96,9 +97,14 @@ public class TrimVideo extends Activity implements
                 String message = getIntent().getStringExtra(EXTRA_MESSAGE);
 
                 if (!TextUtils.isEmpty(message)) {
-                    Toast toast = Toast.makeText(this, message, Toast.LENGTH_LONG);
+                    View layout = getLayoutInflater().inflate(R.layout.toast, null);
+                    TextView text = (TextView) layout.findViewById(R.id.text);
+                    text.setText(message);
+                    Toast toast = new Toast(this);
+                    toast.setDuration(Toast.LENGTH_LONG);
                     int toastPadding = getResources().getDimensionPixelSize(R.dimen.toast_padding);
                     toast.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, toastPadding);
+                    toast.setView(layout);
                     toast.show();
                 }
             }
