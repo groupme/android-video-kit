@@ -81,7 +81,6 @@ public class TrimVideo extends Activity implements
             actionBar.setDisplayOptions(0, displayOptions);
             displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM;
             actionBar.setDisplayOptions(displayOptions, displayOptions);
-            actionBar.setBackgroundDrawable(new ColorDrawable(R.color.black85));
             actionBar.setTitle(R.string.edit_video);
             actionBar.setDisplayShowHomeEnabled(true);
             actionBar.setDisplayHomeAsUpEnabled(true);

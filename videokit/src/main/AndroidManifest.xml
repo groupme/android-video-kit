@@ -2,7 +2,7 @@
     package="com.groupme.android.videokit">
 
     <application>
-        <activity android:name="com.android.gallery3d.app.TrimVideo" />
+        <activity android:name="com.android.gallery3d.app.TrimVideo" android:theme="@style/Theme.Videokit.Black" />
     </application>
 
 </manifest>
