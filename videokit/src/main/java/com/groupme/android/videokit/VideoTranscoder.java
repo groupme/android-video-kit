@@ -846,13 +846,24 @@ public class VideoTranscoder {
         int inputHeight = trackFormat.getInteger(MediaFormat.KEY_HEIGHT);
 
         if (inputWidth >= inputHeight) {
-            float ratio = Math.min(Defaults.OUTPUT_MAX_WIDTH / (float) inputWidth, Defaults.OUTPUT_MAX_HEIGHT / (float) inputHeight);
-            mOutputVideoHeight = (int) (ratio * inputHeight);
-            mOutputVideoWidth = (int) (ratio * inputWidth);
+            mOutputVideoHeight = inputHeight;
+            mOutputVideoWidth = inputWidth;
+
+            if (inputWidth > Defaults.OUTPUT_MAX_WIDTH || inputHeight > Defaults.OUTPUT_MAX_HEIGHT) {
+                float ratio = Math.min(Defaults.OUTPUT_MAX_WIDTH / (float) inputWidth, Defaults.OUTPUT_MAX_HEIGHT / (float) inputHeight);
+                mOutputVideoHeight = (int) (ratio * inputHeight);
+                mOutputVideoWidth = (int) (ratio * inputWidth);
+            }
+
         } else {
-            float ratio = Math.min(Defaults.OUTPUT_MAX_WIDTH / (float) inputHeight, Defaults.OUTPUT_MAX_HEIGHT / (float) inputWidth);
-            mOutputVideoHeight = (int) (ratio * inputWidth);
-            mOutputVideoWidth = (int) (ratio * inputHeight);
+            mOutputVideoHeight = inputWidth;
+            mOutputVideoWidth = inputHeight;
+
+            if (inputHeight > Defaults.OUTPUT_MAX_WIDTH || inputWidth > Defaults.OUTPUT_MAX_HEIGHT) {
+                float ratio = Math.min(Defaults.OUTPUT_MAX_WIDTH / (float) inputHeight, Defaults.OUTPUT_MAX_HEIGHT / (float) inputWidth);
+                mOutputVideoHeight = (int) (ratio * inputWidth);
+                mOutputVideoWidth = (int) (ratio * inputHeight);
+            }
         }
     }
 
@@ -885,7 +896,7 @@ public class VideoTranscoder {
 
         // Set some properties. Failing to specify some of these can cause the MediaCodec
         // configure() call to throw an unhelpful exception.
-        mOutputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mOutputVideoBitRate);
+        mOutputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, getOutputVideoBitRate());
         mOutputVideoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mOutputVideoFrameRate);
         mOutputVideoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mOutputVideoIFrameInterval);
         mOutputVideoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
@@ -949,6 +960,25 @@ public class VideoTranscoder {
     private void createMuxer() throws IOException {
         mMuxer = new MediaMuxer(mOutputFilePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         mMuxer.setOrientationHint(mOrientationHint);
+    }
+
+    private int getOutputVideoBitRate() {
+        int inputBitRate = mOutputVideoBitRate;
+
+        if (mInputVideoComponent.getTrackFormat().containsKey(MediaFormat.KEY_BIT_RATE)) {
+            inputBitRate = mInputVideoComponent.getTrackFormat().getInteger(MediaFormat.KEY_BIT_RATE);
+        } else {
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+            retriever.setDataSource(mContext, mSrcUri);
+
+            String bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE);
+
+            if (bitrate != null) {
+                inputBitRate = Integer.parseInt(bitrate);
+            }
+        }
+
+        return Math.min(inputBitRate, mOutputVideoBitRate);
     }
 
     public interface Listener {

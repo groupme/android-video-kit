@@ -44,10 +44,6 @@ public class MediaInfo {
         extract();
     }
 
-    public MediaInfo(Context context, String uri) throws IOException {
-        this(context, Uri.parse(uri));
-    }
-
     public boolean hasAudioTrack() {
         return mAudioTrackFormat != null;
     }
@@ -72,54 +68,6 @@ public class MediaInfo {
         }
 
         return duration;
-    }
-
-    public int getVideoBitRate() {
-        if (hasVideoTrack()) {
-            return mVideoTrackFormat.getInteger(MediaFormat.KEY_BIT_RATE);
-        }
-
-        return VALUE_NOT_AVAILABLE;
-    }
-
-    public int getAudioBitRate() {
-        if (hasAudioTrack()) {
-            return mAudioTrackFormat.getInteger(MediaFormat.KEY_BIT_RATE);
-        }
-
-        return VALUE_NOT_AVAILABLE;
-    }
-
-    public int getVideoWidth() {
-        if (hasVideoTrack()) {
-            return mVideoTrackFormat.getInteger(MediaFormat.KEY_WIDTH);
-        }
-
-        return VALUE_NOT_AVAILABLE;
-    }
-
-    public int getVideoHeight() {
-        if (hasVideoTrack()) {
-            return mVideoTrackFormat.getInteger(MediaFormat.KEY_HEIGHT);
-        }
-
-        return VALUE_NOT_AVAILABLE;
-    }
-
-    public Uri getMediaUri() {
-        return mMediaUri;
-    }
-
-    MediaExtractor getMediaExtractor() {
-        return mMediaExtractor;
-    }
-
-    MediaFormat getAudioTrackFormat() {
-        return mAudioTrackFormat;
-    }
-
-    MediaFormat getVideoTrackFormat() {
-        return mVideoTrackFormat;
     }
 
     private void extract() throws IOException {
