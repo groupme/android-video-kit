@@ -70,27 +70,54 @@ public class TrimVideo extends Activity implements
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        mContext = getApplicationContext();
-        super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_ACTION_BAR);
-        requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
-        ActionBar actionBar = getActionBar();
+        try {
+            mContext = getApplicationContext();
+            super.onCreate(savedInstanceState);
+            requestWindowFeature(Window.FEATURE_ACTION_BAR);
+            requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
+            ActionBar actionBar = getActionBar();
 
-        if (actionBar != null) {
-            int displayOptions = ActionBar.DISPLAY_SHOW_HOME;
-            actionBar.setDisplayOptions(0, displayOptions);
-            displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM;
-            actionBar.setDisplayOptions(displayOptions, displayOptions);
-            actionBar.setTitle(R.string.edit_video);
-            actionBar.setDisplayShowHomeEnabled(true);
-            actionBar.setDisplayHomeAsUpEnabled(true);
+            if (actionBar != null) {
+                int displayOptions = ActionBar.DISPLAY_SHOW_HOME;
+                actionBar.setDisplayOptions(0, displayOptions);
+                displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM;
+                actionBar.setDisplayOptions(displayOptions, displayOptions);
+                actionBar.setTitle(R.string.edit_video);
+                actionBar.setDisplayShowHomeEnabled(true);
+                actionBar.setDisplayHomeAsUpEnabled(true);
 
-            mMaxDuration = getIntent().getIntExtra(EXTRA_MAX_DURATION, mMaxDuration);
-            int iconResid = getIntent().getIntExtra(EXTRA_ICON_RES_ID, -1);
+                mMaxDuration = getIntent().getIntExtra(EXTRA_MAX_DURATION, mMaxDuration);
+                int iconResid = getIntent().getIntExtra(EXTRA_ICON_RES_ID, -1);
 
-            if (iconResid != -1) {
-                actionBar.setIcon(iconResid);
+                if (iconResid != -1) {
+                    actionBar.setIcon(iconResid);
+                }
             }
+
+            Intent intent = getIntent();
+            mUri = intent.getData();
+            setContentView(R.layout.trim_view);
+            View rootView = findViewById(R.id.trim_view_root);
+            mVideoView = (VideoView) rootView.findViewById(R.id.surface_view);
+            mController = new TrimControllerOverlay(mContext, mMaxDuration);
+            ((ViewGroup) rootView).addView(mController.getView());
+            mController.setListener(this);
+            mController.setCanReplay(true);
+
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+
+            if (ContentResolver.SCHEME_FILE.equals(mUri.getScheme())) {
+                retriever.setDataSource(mUri.getPath());
+            } else {
+                retriever.setDataSource(mContext, mUri);
+            }
+
+            mDuration = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+            mController.setTimes(0, mDuration, 0, 0);
+            mTrimEndTime = Math.min(mDuration, mMaxDuration);
+            mVideoView.setOnErrorListener(this);
+            mVideoView.setOnCompletionListener(this);
+            mVideoView.setVideoURI(mUri);
 
             if (savedInstanceState == null) {
                 String message = getIntent().getStringExtra(EXTRA_MESSAGE);
@@ -107,34 +134,14 @@ public class TrimVideo extends Activity implements
                     toast.show();
                 }
             }
+
+            playVideo();
+        } catch (Exception e) {
+            setResult(RESULT_FIRST_USER);
+            finish();
         }
-
-        Intent intent = getIntent();
-        mUri = intent.getData();
-        setContentView(R.layout.trim_view);
-        View rootView = findViewById(R.id.trim_view_root);
-        mVideoView = (VideoView) rootView.findViewById(R.id.surface_view);
-        mController = new TrimControllerOverlay(mContext, mMaxDuration);
-        ((ViewGroup) rootView).addView(mController.getView());
-        mController.setListener(this);
-        mController.setCanReplay(true);
-
-        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-
-        if (ContentResolver.SCHEME_FILE.equals(mUri.getScheme())) {
-            retriever.setDataSource(mUri.getPath());
-        } else {
-            retriever.setDataSource(mContext, mUri);
-        }
-
-        mDuration = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
-        mController.setTimes(0, mDuration, 0, 0);
-        mTrimEndTime = Math.min(mDuration, mMaxDuration);
-        mVideoView.setOnErrorListener(this);
-        mVideoView.setOnCompletionListener(this);
-        mVideoView.setVideoURI(mUri);
-        playVideo();
     }
+
     @Override
     public void onResume() {
         super.onResume();
