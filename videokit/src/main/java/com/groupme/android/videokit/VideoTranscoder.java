@@ -173,7 +173,8 @@ public class VideoTranscoder {
             cleanup();
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e(String.format("Failed transcoding video: %s", mSrcUri));
+            LogUtils.e(e);
             return false;
         }
     }
@@ -332,13 +333,13 @@ public class VideoTranscoder {
         mStats.outputFileSize = Math.round(new File(mOutputFilePath).length() / 1024. / 1000 * 10) / 10.;
         mStats.timeToTranscode = Math.round(((System.currentTimeMillis() - mStartTime) / 1000.) * 10) / 10.;
 
-        LogUtils.d("Input file: %sMB", mStats.inputFileSize);
-        LogUtils.d("Output file: %sMB", mStats.outputFileSize);
-        LogUtils.d("Time to encode: %ss", mStats.timeToTranscode);
+        LogUtils.w(String.format("Input file: %sMB", mStats.inputFileSize));
+        LogUtils.w(String.format("Output file: %sMB", mStats.outputFileSize));
+        LogUtils.w(String.format("Time to encode: %ss", mStats.timeToTranscode));
     }
 
     private void cleanup() throws Exception {
-        LogUtils.d("releasing extractor, decoder, encoder, and muxer");
+        LogUtils.i("releasing extractor, decoder, encoder, and muxer");
         // Try to release everything we acquired, even if one of the releases fails, in which
         // case we save the first exception we got and re-throw at the end (unless something
         // other exception has already been thrown). This guarantees the first exception thrown
