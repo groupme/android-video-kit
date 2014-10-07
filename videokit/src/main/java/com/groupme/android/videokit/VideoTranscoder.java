@@ -23,6 +23,7 @@ import android.view.Surface;
 import com.groupme.android.videokit.support.Component;
 import com.groupme.android.videokit.support.InputSurface;
 import com.groupme.android.videokit.support.OutputSurface;
+import com.groupme.android.videokit.util.DeviceUtils;
 import com.groupme.android.videokit.util.LogUtils;
 import com.groupme.android.videokit.util.MediaInfo;
 
@@ -978,7 +979,11 @@ public class VideoTranscoder {
             }
         }
 
-        return Math.min(inputBitRate, mOutputVideoBitRate);
+        if (DeviceUtils.deviceisOnBlacklist()) {
+            return mOutputVideoBitRate;
+        } else {
+            return Math.min(inputBitRate, mOutputVideoBitRate);
+        }
     }
 
     public interface Listener {
