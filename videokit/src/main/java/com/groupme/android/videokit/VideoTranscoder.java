@@ -124,35 +124,23 @@ public class VideoTranscoder {
             throw new IllegalStateException("Source Uri cannot be null. Make sure to call source()");
         }
 
-        mStartTime = System.currentTimeMillis();
-
         new Thread(new Runnable() {
             @Override
             public void run() {
-                try {
-                    setup();
-                    transcode();
-                    cleanup();
+                final boolean success = startSync();
 
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (listener != null) {
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (listener != null) {
+                            if (success) {
                                 listener.onSuccess(mStats);
-                            }
-                        }
-                    });
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (listener != null) {
+                            } else {
                                 listener.onFailure();
                             }
                         }
-                    });
-                }
+                    }
+                });
             }
         }).start();
     }
@@ -168,16 +156,37 @@ public class VideoTranscoder {
 
         mStartTime = System.currentTimeMillis();
 
+        boolean setupSuccess = false;
+        boolean transcodeSuccess = false;
+        boolean cleanupSuccess = false;
+
         try {
             setup();
-            transcode();
-            cleanup();
-            return true;
-        } catch (Exception e) {
-            LogUtils.e(String.format("Failed transcoding video: %s", mSrcUri));
-            LogUtils.e(e);
-            return false;
+            setupSuccess = true;
+        } catch (Exception ex) {
+            LogUtils.e(String.format("Failed while setting up VideoTranscoder: %s", mSrcUri));
+            LogUtils.e(ex);
         }
+
+        try {
+            if (setupSuccess) {
+                transcode();
+                transcodeSuccess = true;
+            }
+        } catch (Exception ex) {
+            LogUtils.e(String.format("Failed while transcoding video: %s", mSrcUri));
+            LogUtils.e(ex);
+        }
+
+        try {
+            cleanup();
+            cleanupSuccess = true;
+        } catch (Exception e) {
+            LogUtils.e("Failed while cleaning up transcoder");
+            LogUtils.e(e);
+        }
+
+        return setupSuccess && transcodeSuccess && cleanupSuccess;
     }
 
     private void setup() throws IOException {
