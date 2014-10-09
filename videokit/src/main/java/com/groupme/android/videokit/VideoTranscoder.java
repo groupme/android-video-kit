@@ -183,7 +183,6 @@ public class VideoTranscoder {
             cleanupSuccess = true;
         } catch (Exception e) {
             LogUtils.e("Failed while cleaning up transcoder");
-            LogUtils.e(e);
         }
 
         return setupSuccess && transcodeSuccess && cleanupSuccess;
