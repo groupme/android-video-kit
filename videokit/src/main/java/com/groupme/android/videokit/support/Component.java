@@ -7,7 +7,6 @@ import android.media.MediaFormat;
 import android.net.Uri;
 import android.os.Build;
 
-import com.groupme.android.videokit.util.LogUtils;
 import com.groupme.android.videokit.util.MediaInfo;
 
 import java.io.IOException;
@@ -117,9 +116,6 @@ public class Component {
                 mMediaExtractor.selectTrack(index);
                 mSelectedTrackIndex = index;
                 mTrackFormat = trackFormat;
-
-                LogUtils.d("selected track %d for %s", index, MediaInfo.getMimeTypeFor(trackFormat));
-
                 return;
             }
         }
