@@ -1139,7 +1139,7 @@ public class VideoTranscoder {
             }
 
             if (mLogger == null) {
-                mLogger = new DefaultLogger();
+                transcoder.mLogger = new DefaultLogger();
             } else {
                 transcoder.mLogger = mLogger;
             }

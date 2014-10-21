@@ -5,6 +5,7 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 
 import com.android.gallery3d.app.TrimVideo;
+import com.groupme.android.videokit.util.DefaultLogger;
 import com.groupme.android.videokit.util.MediaInfo;
 import com.groupme.android.videokit.VideoTranscoder;
 
