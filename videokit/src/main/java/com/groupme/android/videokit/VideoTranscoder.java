@@ -221,8 +221,10 @@ public class VideoTranscoder {
 
         boolean muxing = false;
 
-        mVideoDecoderInputBuffers = mVideoDecoder.getInputBuffers();
-        mVideoEncoderOutputBuffers = mVideoEncoder.getOutputBuffers();
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+            mVideoDecoderInputBuffers = mVideoDecoder.getInputBuffers();
+            mVideoEncoderOutputBuffers = mVideoEncoder.getOutputBuffers();
+        }
 
         if (shouldIncludeAudio()) {
             mAudioDecoderInputBuffers = mAudioDecoder.getInputBuffers();
@@ -484,7 +486,20 @@ public class VideoTranscoder {
         mLogger.d(String.format("%s decoder: returned input buffer: %d", type, decoderInputBufferIndex));
 
         MediaExtractor extractor = component.getMediaExtractor();
-        int size = extractor.readSampleData(buffers[decoderInputBufferIndex], 0);
+
+        ByteBuffer buffer;
+
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+            buffer = buffers[decoderInputBufferIndex];
+        } else {
+            if (type.equals("video")) {
+                buffer = mVideoDecoder.getInputBuffer(decoderInputBufferIndex);
+            } else {
+                buffer = mAudioDecoder.getInputBuffer(decoderInputBufferIndex);
+            }
+        }
+
+        int size = extractor.readSampleData(buffer, 0);
         long presentationTime = extractor.getSampleTime();
 
         mLogger.d(String.format("%s extractor: returned buffer of size %d", type, size));
@@ -641,7 +656,13 @@ public class VideoTranscoder {
 
         mLogger.d(String.format("audio encoder: returned input buffer: %d", encoderInputBufferIndex));
 
-        ByteBuffer encoderInputBuffer = mAudioEncoderInputBuffers[encoderInputBufferIndex];
+        ByteBuffer encoderInputBuffer;
+
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+            encoderInputBuffer = mAudioEncoderInputBuffers[encoderInputBufferIndex];
+        } else {
+            encoderInputBuffer = mAudioEncoder.getInputBuffer(encoderInputBufferIndex);
+        }
 
         int size = audioDecoderOutputBufferInfo.size;
         long presentationTime = audioDecoderOutputBufferInfo.presentationTimeUs;
@@ -689,7 +710,7 @@ public class VideoTranscoder {
             return false;
         }
 
-        if (encoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT && encoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
             mLogger.d("video encoder: output buffers changed");
             mVideoEncoderOutputBuffers = mVideoEncoder.getOutputBuffers();
             return false;
@@ -720,7 +741,14 @@ public class VideoTranscoder {
         mLogger.d(String.format("video encoder: returned buffer of size %d", videoEncoderOutputBufferInfo.size));
         mLogger.d(String.format("video encoder: returned buffer for time %d", videoEncoderOutputBufferInfo.presentationTimeUs));
 
-        ByteBuffer encoderOutputBuffer = mVideoEncoderOutputBuffers[encoderOutputBufferIndex];
+        ByteBuffer encoderOutputBuffer;
+
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+            encoderOutputBuffer = mVideoEncoderOutputBuffers[encoderOutputBufferIndex];
+        } else {
+            encoderOutputBuffer = mVideoEncoder.getOutputBuffer(encoderOutputBufferIndex);
+        }
+
         if (videoEncoderOutputBufferInfo.size != 0) {
             mMuxer.writeSampleData(mOutputVideoTrack, encoderOutputBuffer, videoEncoderOutputBufferInfo);
         }
@@ -783,7 +811,13 @@ public class VideoTranscoder {
         mLogger.d(String.format("audio encoder: returned buffer for time %d", audioEncoderOutputBufferInfo.presentationTimeUs));
 
         if (audioEncoderOutputBufferInfo.size != 0) {
-            ByteBuffer encoderOutputBuffer = mAudioEncoderOutputBuffers[encoderOutputBufferIndex];
+            ByteBuffer encoderOutputBuffer;
+
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+                encoderOutputBuffer = mAudioEncoderOutputBuffers[encoderOutputBufferIndex];
+            } else {
+                encoderOutputBuffer = mAudioEncoder.getOutputBuffer(encoderOutputBufferIndex);
+            }
 
             if (audioEncoderOutputBufferInfo.presentationTimeUs >= mPreviousPresentationTime) {
                 mPreviousPresentationTime = audioEncoderOutputBufferInfo.presentationTimeUs;
@@ -828,19 +862,37 @@ public class VideoTranscoder {
      * @return
      */
     private MediaCodecInfo selectCodec(String mimeType) {
-        int numCodecs = MediaCodecList.getCodecCount();
-        for (int i = 0; i < numCodecs; i++) {
-            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+            int numCodecs = MediaCodecList.getCodecCount();
+            for (int i = 0; i < numCodecs; i++) {
+                MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
 
-            if (!codecInfo.isEncoder()) {
-                continue;
+                if (!codecInfo.isEncoder()) {
+                    continue;
+                }
+
+                String[] types = codecInfo.getSupportedTypes();
+                for (String type : types) {
+                    if (type.equalsIgnoreCase(mimeType)) {
+                        mLogger.d(String.format("Codec %s found for mime type %s", codecInfo.getName(), mimeType));
+                        return codecInfo;
+                    }
+                }
             }
+        } else {
+            MediaCodecList codecList = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
 
-            String[] types = codecInfo.getSupportedTypes();
-            for (int j = 0; j < types.length; j++) {
-                if (types[j].equalsIgnoreCase(mimeType)) {
-                    mLogger.d(String.format("Codec %s found for mime type %s", codecInfo.getName(), mimeType));
-                    return codecInfo;
+            for (MediaCodecInfo codecInfo : codecList.getCodecInfos()) {
+                if (!codecInfo.isEncoder()) {
+                    continue;
+                }
+
+                String[] types = codecInfo.getSupportedTypes();
+                for (String type : types) {
+                    if (type.equalsIgnoreCase(mimeType)) {
+                        mLogger.d(String.format("Codec %s found for mime type %s", codecInfo.getName(), mimeType));
+                        return codecInfo;
+                    }
                 }
             }
         }
@@ -923,7 +975,7 @@ public class VideoTranscoder {
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
     }
 
-    private void createVideoEncoder() {
+    private void createVideoEncoder() throws IOException {
         // Create a MediaCodec for the desired codec, then configure it as an encoder with
         // our desired properties. Request a Surface to use for input.
         AtomicReference<Surface> inputSurfaceReference = new AtomicReference<Surface>();
@@ -941,7 +993,7 @@ public class VideoTranscoder {
         mOutputSurface = new OutputSurface();
     }
 
-    private void createVideoDecoder() {
+    private void createVideoDecoder() throws IOException {
         MediaFormat inputFormat = mInputVideoComponent.getTrackFormat();
         mVideoDecoder = MediaCodec.createDecoderByType(MediaInfo.getMimeTypeFor(inputFormat));
         mVideoDecoder.configure(inputFormat, mOutputSurface.getSurface(), null, 0);
@@ -961,7 +1013,7 @@ public class VideoTranscoder {
         mOutputAudioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, Defaults.OUTPUT_AUDIO_AAC_PROFILE);
     }
 
-    private void createAudioEncoder() {
+    private void createAudioEncoder() throws IOException {
         MediaCodecInfo codecInfo = selectCodec(Defaults.OUTPUT_AUDIO_MIME_TYPE);
 
         mAudioEncoder = MediaCodec.createByCodecName(codecInfo.getName());
@@ -969,7 +1021,7 @@ public class VideoTranscoder {
         mAudioEncoder.start();
     }
 
-    private void createAudioDecoder() {
+    private void createAudioDecoder() throws IOException {
         MediaFormat inputFormat = mInputAudioComponent.getTrackFormat();
 
         mAudioDecoder = MediaCodec.createDecoderByType(MediaInfo.getMimeTypeFor(inputFormat));
