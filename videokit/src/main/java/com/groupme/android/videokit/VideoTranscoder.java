@@ -923,7 +923,7 @@ public class VideoTranscoder {
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
     }
 
-    private void createVideoEncoder() {
+    private void createVideoEncoder() throws IOException {
         // Create a MediaCodec for the desired codec, then configure it as an encoder with
         // our desired properties. Request a Surface to use for input.
         AtomicReference<Surface> inputSurfaceReference = new AtomicReference<Surface>();
@@ -941,7 +941,7 @@ public class VideoTranscoder {
         mOutputSurface = new OutputSurface();
     }
 
-    private void createVideoDecoder() {
+    private void createVideoDecoder() throws IOException {
         MediaFormat inputFormat = mInputVideoComponent.getTrackFormat();
         mVideoDecoder = MediaCodec.createDecoderByType(MediaInfo.getMimeTypeFor(inputFormat));
         mVideoDecoder.configure(inputFormat, mOutputSurface.getSurface(), null, 0);
@@ -961,7 +961,7 @@ public class VideoTranscoder {
         mOutputAudioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, Defaults.OUTPUT_AUDIO_AAC_PROFILE);
     }
 
-    private void createAudioEncoder() {
+    private void createAudioEncoder() throws IOException {
         MediaCodecInfo codecInfo = selectCodec(Defaults.OUTPUT_AUDIO_MIME_TYPE);
 
         mAudioEncoder = MediaCodec.createByCodecName(codecInfo.getName());
@@ -969,7 +969,7 @@ public class VideoTranscoder {
         mAudioEncoder.start();
     }
 
-    private void createAudioDecoder() {
+    private void createAudioDecoder() throws IOException {
         MediaFormat inputFormat = mInputAudioComponent.getTrackFormat();
 
         mAudioDecoder = MediaCodec.createDecoderByType(MediaInfo.getMimeTypeFor(inputFormat));

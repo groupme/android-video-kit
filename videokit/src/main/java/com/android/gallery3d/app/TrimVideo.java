@@ -68,6 +68,18 @@ public class TrimVideo extends Activity implements
     public static final String KEY_VIDEO_POSITION = "video_pos";
     private int mDuration;
 
+    protected int getTrimStartTime() {
+        return mTrimStartTime;
+    }
+
+    protected int getTrimEndTime() {
+        return mTrimEndTime;
+    }
+
+    protected Uri getVideoUri() {
+        return mUri;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         try {
