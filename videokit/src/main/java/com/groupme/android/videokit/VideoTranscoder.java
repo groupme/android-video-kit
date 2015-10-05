@@ -851,6 +851,14 @@ public class VideoTranscoder {
     private void createComponents() throws IOException {
         mInputVideoComponent = new Component(mContext, mSrcUri, Component.COMPONENT_TYPE_VIDEO);
 
+        MediaFormat inputFormat = mInputVideoComponent.getTrackFormat();
+        if (inputFormat.containsKey("rotation-degrees")) {
+            // Decoded video is rotated automatically in Android 5.0 lollipop.
+            // Turn off here because we don't want to encode rotated one.
+            // refer: https://android.googlesource.com/platform/frameworks/av/+blame/lollipop-release/media/libstagefright/Utils.cpp
+            inputFormat.setInteger("rotation-degrees", 0);
+        }
+
         if (shouldIncludeAudio()) {
             mInputAudioComponent = new Component(mContext, mSrcUri, Component.COMPONENT_TYPE_AUDIO);
             if (mInputAudioComponent.getSelectedTrackIndex() == Component.NO_TRACK_AVAILABLE) {
