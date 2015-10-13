@@ -6,4 +6,5 @@
     <string name="accessibility_play_video">Play video</string>
     <string name="accessibility_pause_video">Pause video</string>
     <string name="accessibility_reload_video">Reload video</string>
+    <string name="edit_video">Edit Video</string>
 </resources>

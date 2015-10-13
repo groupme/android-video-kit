@@ -71,7 +71,7 @@ public class TimeBar extends View {
         mProgressPaint = new Paint();
         mProgressPaint.setColor(0xFF808080);
         mPlayedPaint = new Paint();
-        mPlayedPaint.setColor(0xFFFFFFFF);
+        mPlayedPaint.setColor(0xFF33B5E5);
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
         float textSizeInPx = metrics.density * TEXT_SIZE_IN_DP;
         mTimeTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -80,7 +80,7 @@ public class TimeBar extends View {
         mTimeTextPaint.setTextAlign(Paint.Align.CENTER);
         mTimeBounds = new Rect();
         mTimeTextPaint.getTextBounds("0:00:00", 0, 7, mTimeBounds);
-        mScrubber = BitmapFactory.decodeResource(getResources(), R.drawable.scrubber_knob);
+        mScrubber = BitmapFactory.decodeResource(getResources(), R.drawable.play_scrubber);
         mScrubberPadding = (int) (metrics.density * SCRUBBER_PADDING_IN_DP);
         mVPaddingInPx = (int) (metrics.density * V_PADDING_IN_DP);
     }

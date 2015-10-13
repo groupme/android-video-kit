@@ -18,24 +18,31 @@ import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.drawable.ColorDrawable;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.VideoView;
 
 import com.groupme.android.videokit.R;
 
-@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+@TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 public class TrimVideo extends Activity implements
         MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener,
@@ -43,6 +50,10 @@ public class TrimVideo extends Activity implements
 
     public static final String START_TIME = "com.groupme.android.videokit.START_TIME";
     public static final String END_TIME = "com.groupme.android.videokit.END_TIME";
+    public static final String EXTRA_MESSAGE = "com.groupme.android.videokit.extra.MESSAGE";
+    public static final String EXTRA_MAX_DURATION = "com.groupme.android.videokit.extra.MAX_DURATION";
+    public static final String EXTRA_ICON_RES_ID = "com.groupme.android.videokit.extra.ICON_RES_ID";
+    private int mMaxDuration = 30 * 1000; // 30 seconds
     private VideoView mVideoView;
     private TrimControllerOverlay mController;
     private Context mContext;
@@ -55,50 +66,103 @@ public class TrimVideo extends Activity implements
     public static final String KEY_TRIM_START = "trim_start";
     public static final String KEY_TRIM_END = "trim_end";
     public static final String KEY_VIDEO_POSITION = "video_pos";
-    private boolean mHasPaused = false;
+    private int mDuration;
+
+    protected int getTrimStartTime() {
+        return mTrimStartTime;
+    }
+
+    protected int getTrimEndTime() {
+        return mTrimEndTime;
+    }
+
+    protected Uri getVideoUri() {
+        return mUri;
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        mContext = getApplicationContext();
-        super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_ACTION_BAR);
-        requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
-        ActionBar actionBar = getActionBar();
+        try {
+            mContext = getApplicationContext();
+            super.onCreate(savedInstanceState);
+            requestWindowFeature(Window.FEATURE_ACTION_BAR);
+            requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
+            ActionBar actionBar = getActionBar();
 
-        if (actionBar != null) {
-            int displayOptions = ActionBar.DISPLAY_SHOW_HOME;
-            actionBar.setDisplayOptions(0, displayOptions);
-            displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM;
-            actionBar.setDisplayOptions(displayOptions, displayOptions);
+            if (actionBar != null) {
+                int displayOptions = ActionBar.DISPLAY_SHOW_HOME;
+                actionBar.setDisplayOptions(0, displayOptions);
+                displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM;
+                actionBar.setDisplayOptions(displayOptions, displayOptions);
+                actionBar.setTitle(R.string.edit_video);
+                actionBar.setDisplayShowHomeEnabled(true);
+                actionBar.setDisplayHomeAsUpEnabled(true);
+
+                mMaxDuration = getIntent().getIntExtra(EXTRA_MAX_DURATION, mMaxDuration);
+                int iconResid = getIntent().getIntExtra(EXTRA_ICON_RES_ID, -1);
+
+                if (iconResid != -1) {
+                    actionBar.setIcon(iconResid);
+                }
+            }
+
+            Intent intent = getIntent();
+            mUri = intent.getData();
+            setContentView(R.layout.trim_view);
+            View rootView = findViewById(R.id.trim_view_root);
+            mVideoView = (VideoView) rootView.findViewById(R.id.surface_view);
+            mController = new TrimControllerOverlay(mContext, mMaxDuration);
+            ((ViewGroup) rootView).addView(mController.getView());
+            mController.setListener(this);
+            mController.setCanReplay(true);
+
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+
+            if (ContentResolver.SCHEME_FILE.equals(mUri.getScheme())) {
+                retriever.setDataSource(mUri.getPath());
+            } else {
+                retriever.setDataSource(mContext, mUri);
+            }
+
+            mDuration = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+            mController.setTimes(0, mDuration, 0, 0);
+            mTrimEndTime = Math.min(mDuration, mMaxDuration);
+            mVideoView.setOnErrorListener(this);
+            mVideoView.setOnCompletionListener(this);
+            mVideoView.setVideoURI(mUri);
+
+            if (savedInstanceState == null) {
+                String message = getIntent().getStringExtra(EXTRA_MESSAGE);
+
+                if (!TextUtils.isEmpty(message)) {
+                    View layout = getLayoutInflater().inflate(R.layout.toast, null);
+                    TextView text = (TextView) layout.findViewById(R.id.text);
+                    text.setText(message);
+                    Toast toast = new Toast(this);
+                    toast.setDuration(Toast.LENGTH_LONG);
+                    int toastPadding = getResources().getDimensionPixelSize(R.dimen.toast_padding);
+                    toast.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, toastPadding);
+                    toast.setView(layout);
+                    toast.show();
+                }
+            }
+
+            playVideo();
+        } catch (Exception e) {
+            setResult(RESULT_FIRST_USER);
+            finish();
         }
-
-        Intent intent = getIntent();
-        mUri = intent.getData();
-        setContentView(R.layout.trim_view);
-        View rootView = findViewById(R.id.trim_view_root);
-        mVideoView = (VideoView) rootView.findViewById(R.id.surface_view);
-        mController = new TrimControllerOverlay(mContext);
-        ((ViewGroup) rootView).addView(mController.getView());
-        mController.setListener(this);
-        mController.setCanReplay(true);
-        mVideoView.setOnErrorListener(this);
-        mVideoView.setOnCompletionListener(this);
-        mVideoView.setVideoURI(mUri);
-        playVideo();
     }
+
     @Override
     public void onResume() {
         super.onResume();
-        if (mHasPaused) {
-            mVideoView.seekTo(mVideoPosition);
-            mVideoView.resume();
-            mHasPaused = false;
-        }
+        mVideoView.seekTo(mVideoPosition);
+        mVideoView.resume();
         mHandler.post(mProgressChecker);
     }
     @Override
     public void onPause() {
-        mHasPaused = true;
         mHandler.removeCallbacksAndMessages(null);
         mVideoPosition = mVideoView.getCurrentPosition();
         mVideoView.suspend();
@@ -136,9 +200,13 @@ public class TrimVideo extends Activity implements
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.done) {
             Intent results = new Intent();
+            results.setData(mUri);
             results.putExtra(START_TIME, mTrimStartTime);
             results.putExtra(END_TIME, mTrimEndTime);
             setResult(Activity.RESULT_OK, results);
+            finish();
+            return true;
+        } else if (item.getItemId() == android.R.id.home) {
             finish();
             return true;
         } else {
@@ -168,24 +236,22 @@ public class TrimVideo extends Activity implements
         // If the video position is smaller than the starting point of trimming,
         // correct it.
         if (mVideoPosition < mTrimStartTime) {
-            mVideoView.seekTo(mTrimStartTime);
             mVideoPosition = mTrimStartTime;
         }
         // If the position is bigger than the end point of trimming, show the
         // replay button and pause.
         if (mVideoPosition >= mTrimEndTime && mTrimEndTime > 0) {
             if (mVideoPosition > mTrimEndTime) {
-                mVideoView.seekTo(mTrimEndTime);
                 mVideoPosition = mTrimEndTime;
             }
             mController.showEnded();
             mVideoView.pause();
         }
-        int duration = mVideoView.getDuration();
-        if (duration > 0 && mTrimEndTime == 0) {
-            mTrimEndTime = duration;
+
+        if (mVideoView.isPlaying()) {
+            mController.setTimes(mVideoPosition, mDuration, mTrimStartTime, mTrimEndTime);
         }
-        mController.setTimes(mVideoPosition, duration, mTrimStartTime, mTrimEndTime);
+
         return mVideoPosition;
     }
     private void playVideo() {
@@ -196,16 +262,6 @@ public class TrimVideo extends Activity implements
     private void pauseVideo() {
         mVideoView.pause();
         mController.showPaused();
-    }
-    private boolean isModified() {
-        int delta = mTrimEndTime - mTrimStartTime;
-        // Considering that we only trim at sync frame, we don't want to trim
-        // when the time interval is too short or too close to the origin.
-        if (delta < 100 || Math.abs(mVideoView.getDuration() - delta) < 100) {
-            return false;
-        } else {
-            return true;
-        }
     }
 
     @Override

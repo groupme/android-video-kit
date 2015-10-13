@@ -26,8 +26,9 @@ import android.view.View;
  * The controller for the Trimming Video.
  */
 public class TrimControllerOverlay extends CommonControllerOverlay  {
-    public TrimControllerOverlay(Context context) {
+    public TrimControllerOverlay(Context context, int maxDuration) {
         super(context);
+        ((TrimTimeBar) mTimeBar).setMaxDuration(maxDuration);
     }
     @Override
     protected void createTimeBar(Context context) {
