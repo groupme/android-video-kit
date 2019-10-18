@@ -79,6 +79,7 @@ public class VideoTranscoder {
 
     private Stats mStats;
     private Logger mLogger;
+    private int mRetryCount;
 
     // Buffers
     private ByteBuffer[] mVideoDecoderInputBuffers;
@@ -514,12 +515,22 @@ public class VideoTranscoder {
 
         if (!extractor.advance()) {
             mLogger.d(String.format("%s extractor: EOS", type));
-            decoder.queueInputBuffer(
-                    decoderInputBufferIndex,
-                    0,
-                    0,
-                    0,
-                    MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+            try {
+                decoder.queueInputBuffer(
+                        decoderInputBufferIndex,
+                        0,
+                        0,
+                        0,
+                        MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+            } catch (Exception e) {
+                mRetryCount++;
+                if (mRetryCount < 5) {
+                    this.extractAndFeedDecoder(decoder, buffers, component);
+                } else {
+                    mRetryCount = 0;
+                    throw e;
+                }
+            }
             return true;
         }
 
@@ -757,7 +768,7 @@ public class VideoTranscoder {
         }
 
         if (encoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-           mLogger.d("audio encoder: output format changed");
+            mLogger.d("audio encoder: output format changed");
             if (mOutputAudioTrack >= 0) {
                 throw new IllegalStateException("audio encoder changed its output format again?");
             }
@@ -1076,7 +1087,7 @@ public class VideoTranscoder {
 
         public Builder(Uri srcUri, File destFile) {
             if (srcUri == null) {
-               throw new NullPointerException("srcUri cannot be null");
+                throw new NullPointerException("srcUri cannot be null");
             }
 
             if (destFile == null) {
