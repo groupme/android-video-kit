@@ -70,6 +70,20 @@ public class MediaInfo {
         return duration;
     }
 
+    public int getDurationMilliseconds() {
+        long duration = -1;
+
+        if (hasVideoTrack()) {
+            duration = mVideoTrackFormat.getLong(MediaFormat.KEY_DURATION);
+            duration = TimeUnit.MICROSECONDS.toMillis(duration);
+        } else if (hasAudioTrack()) {
+            duration = mAudioTrackFormat.getLong(MediaFormat.KEY_DURATION);
+            duration = TimeUnit.MICROSECONDS.toMillis(duration);
+        }
+
+        return (int) duration;
+    }
+
     private void extract() throws IOException {
         mMediaExtractor = new MediaExtractor();
         mMediaExtractor.setDataSource(mContext, mMediaUri, null);
