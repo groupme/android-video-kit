@@ -76,6 +76,10 @@ public class TrimVideo extends Activity implements
         return mTrimEndTime;
     }
 
+    protected int getVideoDuration() {
+        return mDuration;
+    }
+
     protected Uri getVideoUri() {
         return mUri;
     }
