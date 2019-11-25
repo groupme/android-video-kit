@@ -1,6 +1,5 @@
 package com.groupme.android.videokit;
 
-import android.annotation.TargetApi;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
@@ -12,7 +11,6 @@ import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaMuxer;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.OpenableColumns;
@@ -32,7 +30,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
-@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 public class VideoTranscoder {
     public static int TRIM_TIME_END = -1;
 
@@ -193,8 +190,8 @@ public class VideoTranscoder {
     private void setup() throws IOException {
         createComponents();
 
-        calculateOutputDimensions();
         setOrientationHint();
+        calculateOutputDimensions();
 
         createOutputFormats();
         createVideoEncoder();
@@ -748,11 +745,6 @@ public class VideoTranscoder {
         return false;
     }
 
-    /**
-     *
-     * @param audioEncoderOutputBufferInfo
-     * @return
-     */
     private boolean pollAudioFromEncoderAndFeedToMuxer(MediaCodec.BufferInfo audioEncoderOutputBufferInfo) {
         int encoderOutputBufferIndex = mAudioEncoder.dequeueOutputBuffer(audioEncoderOutputBufferInfo, TIMEOUT_USEC);
 
@@ -884,14 +876,16 @@ public class VideoTranscoder {
         int inputWidth = trackFormat.getInteger(MediaFormat.KEY_WIDTH);
         int inputHeight = trackFormat.getInteger(MediaFormat.KEY_HEIGHT);
 
-        if (inputWidth >= inputHeight) {
+        // If this is a portrait video taken by a device that supports orientation hints, the resolution will be swapped.
+        // If its landscape, a screencap, or a device that doesn't support hints, it won't be.
+        if (inputWidth >= inputHeight || mOrientationHint == 0 || mOrientationHint == 180) {
             mOutputVideoHeight = inputHeight;
             mOutputVideoWidth = inputWidth;
 
             if (inputWidth > Defaults.OUTPUT_MAX_WIDTH || inputHeight > Defaults.OUTPUT_MAX_HEIGHT) {
                 float ratio = Math.min(Defaults.OUTPUT_MAX_WIDTH / (float) inputWidth, Defaults.OUTPUT_MAX_HEIGHT / (float) inputHeight);
-                mOutputVideoHeight = (int) (ratio * inputHeight);
-                mOutputVideoWidth = (int) (ratio * inputWidth);
+                mOutputVideoHeight = getRoundedSize(ratio, inputHeight);
+                mOutputVideoWidth = getRoundedSize(ratio, inputWidth);
             }
 
         } else {
@@ -900,11 +894,18 @@ public class VideoTranscoder {
 
             if (inputHeight > Defaults.OUTPUT_MAX_WIDTH || inputWidth > Defaults.OUTPUT_MAX_HEIGHT) {
                 float ratio = Math.min(Defaults.OUTPUT_MAX_WIDTH / (float) inputHeight, Defaults.OUTPUT_MAX_HEIGHT / (float) inputWidth);
-                mOutputVideoHeight = (int) (ratio * inputWidth);
-                mOutputVideoWidth = (int) (ratio * inputHeight);
+                mOutputVideoHeight = getRoundedSize(ratio, inputWidth);
+                mOutputVideoWidth = getRoundedSize(ratio, inputHeight);
             }
         }
     }
+
+    private int getRoundedSize(float ratio, int size) {
+        // The transcoder can fail if the resolution isn't a multiple of 2. So, round it if not.
+        int adjusted = (int) ratio * size;
+        return (adjusted + 1) / 2;
+    }
+
 
     private void setOrientationHint() {
         MediaFormat trackFormat = mInputVideoComponent.getTrackFormat();
@@ -1033,14 +1034,14 @@ public class VideoTranscoder {
         static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc";       // H.264 Advanced Video Coding
         static final String OUTPUT_AUDIO_MIME_TYPE = "audio/MP4A-LATM"; // Advanced Audio Coding
 
-        static final int OUTPUT_VIDEO_BIT_RATE = 2000 * 1024;       // 2 MBps
+        static final int OUTPUT_VIDEO_BIT_RATE = 5000 * 1024;       // 2 MBps
         static final int OUTPUT_AUDIO_BIT_RATE = 128 * 1024;        // 128 kbps
 
         static final int OUTPUT_VIDEO_FRAME_RATE = 30;              // 30fps
         static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 10;         // 10 seconds between I-frames
 
-        static final int OUTPUT_MAX_WIDTH = 1280;
-        static final int OUTPUT_MAX_HEIGHT = 720;
+        static final int OUTPUT_MAX_WIDTH = 1920;
+        static final int OUTPUT_MAX_HEIGHT = 1920;
 
         static final int OUTPUT_AUDIO_AAC_PROFILE = MediaCodecInfo.CodecProfileLevel.AACObjectLC;
     }

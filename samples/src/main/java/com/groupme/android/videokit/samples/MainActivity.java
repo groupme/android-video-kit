@@ -1,31 +1,40 @@
 package com.groupme.android.videokit.samples;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
-
-import com.android.gallery3d.app.TrimVideo;
-import com.groupme.android.videokit.util.DefaultLogger;
-import com.groupme.android.videokit.util.MediaInfo;
-import com.groupme.android.videokit.VideoTranscoder;
-
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.StrictMode;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.android.gallery3d.app.TrimVideo;
+import com.groupme.android.videokit.VideoTranscoder;
+import com.groupme.android.videokit.util.MediaInfo;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_PICK_VIDEO = 0;
     private static final int REQUEST_PICK_VIDEO_FOR_TRIM = 1;
     private static final int REQUEST_TRIM_VIDEO = 2;
+
+    private static final int REQUEST_PERMISSION_EXTERNAL_STORAGE = 0x78;
 
     private ProgressDialog mProgressDialog;
     private TextView mInputFileSize;
@@ -37,7 +46,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button testVideoEncode = (Button) findViewById(R.id.btn_encode_video);
+        Button testVideoEncode = findViewById(R.id.btn_encode_video);
         testVideoEncode.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -47,7 +56,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        Button testVideoTrim = (Button) findViewById(R.id.btn_trim_video);
+        Button testVideoTrim = findViewById(R.id.btn_trim_video);
         testVideoTrim.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -57,16 +66,17 @@ public class MainActivity extends Activity {
             }
         });
 
-        mInputFileSize = (TextView) findViewById(R.id.input_file_size);
-        mOutputFileSize = (TextView) findViewById(R.id.output_file_size);
-        mTimeToEncode = (TextView) findViewById(R.id.time_to_encode);
+        mInputFileSize = findViewById(R.id.input_file_size);
+        mOutputFileSize = findViewById(R.id.output_file_size);
+        mTimeToEncode = findViewById(R.id.time_to_encode);
     }
 
-    private void encodeVideo(final Uri videoUri) throws IOException {
-        MediaInfo mediaInfo = new MediaInfo(this, videoUri);
-
-        if (mediaInfo.hasVideoTrack()) {
-
+    private void encodeVideo(final Uri videoUri) {
+        try {
+            MediaInfo mediaInfo = new MediaInfo(this, videoUri);
+            transcode(videoUri, mediaInfo, 0, (int) mediaInfo.getDurationMilliseconds());
+        } catch (IOException ex) {
+            Log.e(MainActivity.class.getSimpleName(), "Error encoding");
         }
     }
 
@@ -77,10 +87,14 @@ public class MainActivity extends Activity {
         switch (requestCode) {
             case REQUEST_PICK_VIDEO:
                 if (resultCode == Activity.RESULT_OK) {
-                    try {
-                        encodeVideo(data.getData());
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    mSrcUri = data.getData();
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(this,
+                                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                REQUEST_PERMISSION_EXTERNAL_STORAGE);
+                    } else {
+                        encodeVideo(mSrcUri);
                     }
                 }
                 break;
@@ -131,8 +145,19 @@ public class MainActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_PERMISSION_EXTERNAL_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                encodeVideo(mSrcUri);
+            }
+        }
+    }
+
     public void transcode(Uri videoUri, MediaInfo mediaInfo, int start, int end) throws IOException {
-        final File outputFile = new File(Environment.getExternalStorageDirectory(), "output.mp4");
+        final File outputFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "output.mp4");
 
         VideoTranscoder transcoder = new VideoTranscoder.Builder(videoUri, outputFile)
                 .trim(start, end)
@@ -149,10 +174,20 @@ public class MainActivity extends Activity {
                 mOutputFileSize.setText(String.format("Output file: %sMB", stats.outputFileSize));
                 mTimeToEncode.setText(String.format("Time to encode: %ss", stats.timeToTranscode));
 
-                Button playVideo = (Button) findViewById(R.id.btn_play);
+                Button playVideo = findViewById(R.id.btn_play);
                 playVideo.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
+                        // Don't do this in real code, convert to a content URI
+                        if(Build.VERSION.SDK_INT >= 24) {
+                            try {
+                                Method m = StrictMode.class.getMethod("disableDeathOnFileUriExposure");
+                                m.invoke(null);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+
                         Intent intent = new Intent(android.content.Intent.ACTION_VIEW);
                         intent.setDataAndType(Uri.fromFile(outputFile), "video/*");
                         startActivity(intent);
@@ -162,7 +197,11 @@ public class MainActivity extends Activity {
 
             @Override
             public void onFailure() {
+                if (mProgressDialog.isShowing()) {
+                    mProgressDialog.dismiss();
+                }
 
+                Toast.makeText(MainActivity.this, "Error encoding video", Toast.LENGTH_LONG).show();
             }
         });
 
