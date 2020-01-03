@@ -902,8 +902,8 @@ public class VideoTranscoder {
 
     private int getRoundedSize(float ratio, int size) {
         // The transcoder can fail if the resolution isn't a multiple of 2. So, round it if not.
-        int adjusted = (int) ratio * size;
-        return (adjusted + 1) / 2;
+        int adjusted = (int) (ratio * size);
+        return Math.round(adjusted / 4) * 2;
     }
 
 
