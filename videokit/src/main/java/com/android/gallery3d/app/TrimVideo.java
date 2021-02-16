@@ -53,10 +53,8 @@ public class TrimVideo extends Activity implements
     public static final String EXTRA_MESSAGE = "com.groupme.android.videokit.extra.MESSAGE";
     public static final String EXTRA_MAX_DURATION = "com.groupme.android.videokit.extra.MAX_DURATION";
     public static final String EXTRA_ICON_RES_ID = "com.groupme.android.videokit.extra.ICON_RES_ID";
-    public static final String EXTRA_SHOW_TOGGLE_SWITCH = "com.groupme.android.videokit.extra.SHOW_TOGGLE_SWITCH";
     public static final String EXTRA_TOGGLE_SWITCH_DESCRIPTION = "com.groupme.android.videokit.extra.TOGGLE_SWITCH_DESCRIPTION";
-    public static final String EXTRA_SHOW_COACHMARK = "com.groupme.android.videokit.extra.SHOW_COACHMARK";
-    public static final String SHOW_TOGGLE = "show_toggle";
+    public static final String EXTRA_TOGGLE_COACHMARK_MESSAGE = "com.groupme.android.videokit.extra.TOGGLE_COACHMARK_MESSAGE";
     private int mMaxDuration = 30 * 1000; // 30 seconds
     private VideoView mVideoView;
     private TrimControllerOverlay mController;
@@ -139,13 +137,15 @@ public class TrimVideo extends Activity implements
             mVideoView.setOnCompletionListener(this);
             mVideoView.setVideoURI(mUri);
 
-
-            if (TextUtils.equals(intent.getStringExtra(EXTRA_SHOW_TOGGLE_SWITCH), SHOW_TOGGLE)) {
-                String toggleSwitchDescription = intent.getStringExtra(EXTRA_TOGGLE_SWITCH_DESCRIPTION);
-                if (!TextUtils.isEmpty(toggleSwitchDescription)) {
-                    mController.setSwitchText(toggleSwitchDescription);
-                }
+            String toggleSwitchDescription = intent.getStringExtra(EXTRA_TOGGLE_SWITCH_DESCRIPTION);
+            if (!TextUtils.isEmpty(toggleSwitchDescription)) {
+                mController.setSwitchText(toggleSwitchDescription);
                 mController.showToggle();
+                String coachMarkMessage = intent.getStringExtra(EXTRA_TOGGLE_COACHMARK_MESSAGE);
+                if(!TextUtils.isEmpty(coachMarkMessage)) {
+                    mController.showToggleCoachMark(coachMarkMessage);
+                }
+
             } else {
                 mController.hideToggle();
             }

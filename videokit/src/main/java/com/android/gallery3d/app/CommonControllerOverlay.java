@@ -16,6 +16,7 @@
 package com.android.gallery3d.app;
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Rect;
 import android.os.Build;
@@ -60,7 +61,6 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
     protected final ImageView mPlayPauseReplayView;
     protected State mState;
     protected final LinearLayout mToggleSwitchView;
-    protected TextView mToggleSwitchTextView;
     protected Switch mToggleSwitch;
     protected boolean mCanReplay = true;
     public void setSeekable(boolean canSeek) {
@@ -113,11 +113,13 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
         mToggleSwitchView = new LinearLayout(context);
         mToggleSwitchView.setOrientation(LinearLayout.HORIZONTAL);
         mToggleSwitchView.setGravity(Gravity.CENTER_HORIZONTAL);
-        mToggleSwitchTextView = new TextView(context);
-        mToggleSwitchTextView.setTextColor(getResources().getColor(R.color.white));
-        mToggleSwitchTextView.setTextSize(16);
-        mToggleSwitchView.addView(mToggleSwitchTextView, wrapContent);
         mToggleSwitch = new Switch(context);
+        mToggleSwitch.setTextColor(getResources().getColor(R.color.white));
+        mToggleSwitch.setTextSize(16);
+        ColorStateList trackColor = ColorStateList.valueOf(getResources().getColor(R.color.white));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            mToggleSwitch.setTrackTintList(trackColor);
+        }
         mToggleSwitchView.addView(mToggleSwitch, wrapContent);
         addView(mToggleSwitchView, matchParent);
         hide();
@@ -260,7 +262,7 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
         // But extend the background to the width of the screen, since we don't
         // care if it will be covered by a system component and it looks better.
         mToggleSwitchView.layout(0, y - mTimeBar.getPreferredHeight() , w, y);
-        mBackground.layout(0, y - mTimeBar.getBarHeight() - mToggleSwitchTextView.getHeight(), w, y);
+        mBackground.layout(0, y - mTimeBar.getBarHeight() - mToggleSwitch.getHeight(), w, y);
         mTimeBar.layout(pl, y - mTimeBar.getPreferredHeight(), w - pr, y);
         // Put the play/pause/next/ previous button in the center of the screen
         layoutCenteredView(mPlayPauseReplayView, 0, 0, w, h);
@@ -284,7 +286,6 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
     protected void updateViews() {
         mBackground.setVisibility(View.VISIBLE);
         mTimeBar.setVisibility(View.VISIBLE);
-//        mToggleSwitchView.setVisibility(View.VISIBLE);z
         Resources resources = getContext().getResources();
         int imageResource = R.drawable.ic_video_overlay;
         String contentDescription = resources.getString(R.string.accessibility_reload_video);
