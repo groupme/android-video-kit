@@ -36,6 +36,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
@@ -50,10 +51,12 @@ public class TrimVideo extends Activity implements
 
     public static final String START_TIME = "com.groupme.android.videokit.START_TIME";
     public static final String END_TIME = "com.groupme.android.videokit.END_TIME";
+    public static final String TOGGLE_SWITCH_STATE = "com.groupme.android.videokit.TOGGLE_SWITCH_STATE";
     public static final String EXTRA_MESSAGE = "com.groupme.android.videokit.extra.MESSAGE";
     public static final String EXTRA_MAX_DURATION = "com.groupme.android.videokit.extra.MAX_DURATION";
     public static final String EXTRA_ICON_RES_ID = "com.groupme.android.videokit.extra.ICON_RES_ID";
     public static final String EXTRA_TOGGLE_SWITCH_DESCRIPTION = "com.groupme.android.videokit.extra.TOGGLE_SWITCH_DESCRIPTION";
+    public static final String EXTRA_TOGGLE_MAX_DURATION = "com.groupme.android.videokit.extra.TOGGLE_MAX_DURATION";
     public static final String EXTRA_TOGGLE_COACHMARK_MESSAGE = "com.groupme.android.videokit.extra.TOGGLE_COACHMARK_MESSAGE";
     private int mMaxDuration = 30 * 1000; // 30 seconds
     private VideoView mVideoView;
@@ -64,6 +67,7 @@ public class TrimVideo extends Activity implements
     public ProgressDialog mProgress;
     private int mTrimStartTime = 0;
     private int mTrimEndTime = 0;
+    private boolean mToggleSwitchState = false;
     private int mVideoPosition = 0;
     public static final String KEY_TRIM_START = "trim_start";
     public static final String KEY_TRIM_END = "trim_end";
@@ -80,6 +84,10 @@ public class TrimVideo extends Activity implements
 
     protected int getVideoDuration() {
         return mDuration;
+    }
+
+    protected boolean getToggleSwitchState() {
+        return mToggleSwitchState;
     }
 
     protected Uri getVideoUri() {
@@ -145,6 +153,24 @@ public class TrimVideo extends Activity implements
                 if(!TextUtils.isEmpty(coachMarkMessage)) {
                     mController.showToggleCoachMark(coachMarkMessage);
                 }
+                mController.mToggleSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                        mToggleSwitchState = b;
+                        if(mToggleSwitchState) {
+                            mMaxDuration = getIntent().getIntExtra(EXTRA_TOGGLE_MAX_DURATION, mMaxDuration);
+                        } else {
+                            mMaxDuration = getIntent().getIntExtra(EXTRA_MAX_DURATION, mMaxDuration);
+                        }
+                        if(mTrimStartTime + mMaxDuration > mDuration) {
+                            mTrimEndTime = mDuration;
+                        } else {
+                            mTrimEndTime = mTrimStartTime + mMaxDuration;
+                        }
+                        mTrimEndTime = mTrimStartTime + mMaxDuration;
+                        mController.setTimes(mTrimStartTime, mDuration, mTrimStartTime, mTrimEndTime);
+                    }
+                });
 
             } else {
                 mController.hideToggle();
@@ -221,6 +247,7 @@ public class TrimVideo extends Activity implements
             results.setData(mUri);
             results.putExtra(START_TIME, mTrimStartTime);
             results.putExtra(END_TIME, mTrimEndTime);
+            results.putExtra(TOGGLE_SWITCH_STATE, mToggleSwitchState);
             setResult(Activity.RESULT_OK, results);
             finish();
             return true;
@@ -267,7 +294,7 @@ public class TrimVideo extends Activity implements
         }
 
         if (mVideoView.isPlaying()) {
-            mController.setTimes(mVideoPosition, mDuration, mTrimStartTime, mTrimEndTime);
+            mController.setTimes(mVideoPosition, mDuration, mTrimStartTime, Math.min(mTrimStartTime + mMaxDuration, mTrimEndTime));
         }
 
         return mVideoPosition;
@@ -302,7 +329,7 @@ public class TrimVideo extends Activity implements
     public void onSeekEnd(int time, int start, int end) {
         mVideoView.seekTo(time);
         mTrimStartTime = start;
-        mTrimEndTime = end;
+        mTrimEndTime = Math.min(mTrimStartTime + mMaxDuration, end);
         setProgress();
     }
     @Override

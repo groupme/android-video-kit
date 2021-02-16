@@ -52,6 +52,10 @@ public class TrimControllerOverlay extends CommonControllerOverlay  {
         mToggleSwitchView.setVisibility(View.VISIBLE);
     }
 
+    public boolean getToggleState() {
+        return mToggleSwitch.isChecked();
+    }
+
     public void showToggleCoachMark(final String message) {
         mToggleSwitch.post(new Runnable() {
             public void run() {
