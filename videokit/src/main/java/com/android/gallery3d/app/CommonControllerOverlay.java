@@ -30,6 +30,7 @@ import android.widget.ImageView.ScaleType;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.groupme.android.videokit.R;
@@ -58,6 +59,9 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
     protected final TextView mErrorView;
     protected final ImageView mPlayPauseReplayView;
     protected State mState;
+    protected final LinearLayout mToggleSwitchView;
+    protected TextView mToggleSwitchTextView;
+    protected Switch mToggleSwitch;
     protected boolean mCanReplay = true;
     public void setSeekable(boolean canSeek) {
         mTimeBar.setSeekable(canSeek);
@@ -104,6 +108,18 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
                 new RelativeLayout.LayoutParams(
                         LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
         setLayoutParams(params);
+
+
+        mToggleSwitchView = new LinearLayout(context);
+        mToggleSwitchView.setOrientation(LinearLayout.HORIZONTAL);
+        mToggleSwitchView.setGravity(Gravity.CENTER_HORIZONTAL);
+        mToggleSwitchTextView = new TextView(context);
+        mToggleSwitchTextView.setTextColor(getResources().getColor(R.color.white));
+        mToggleSwitchTextView.setTextSize(16);
+        mToggleSwitchView.addView(mToggleSwitchTextView, wrapContent);
+        mToggleSwitch = new Switch(context);
+        mToggleSwitchView.addView(mToggleSwitch, wrapContent);
+        addView(mToggleSwitchView, matchParent);
         hide();
     }
     abstract protected void createTimeBar(Context context);
@@ -165,6 +181,7 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
         mLoadingView.setVisibility(View.INVISIBLE);
         mBackground.setVisibility(View.INVISIBLE);
         mTimeBar.setVisibility(View.INVISIBLE);
+        mToggleSwitchView.setVisibility(View.INVISIBLE);
         setVisibility(View.INVISIBLE);
         setFocusable(true);
         requestFocus();
@@ -242,7 +259,8 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
         // component.
         // But extend the background to the width of the screen, since we don't
         // care if it will be covered by a system component and it looks better.
-        mBackground.layout(0, y - mTimeBar.getBarHeight(), w, y);
+        mToggleSwitchView.layout(0, y - mTimeBar.getPreferredHeight() , w, y);
+        mBackground.layout(0, y - mTimeBar.getBarHeight() - mToggleSwitchTextView.getHeight(), w, y);
         mTimeBar.layout(pl, y - mTimeBar.getPreferredHeight(), w - pr, y);
         // Put the play/pause/next/ previous button in the center of the screen
         layoutCenteredView(mPlayPauseReplayView, 0, 0, w, h);
@@ -266,6 +284,7 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
     protected void updateViews() {
         mBackground.setVisibility(View.VISIBLE);
         mTimeBar.setVisibility(View.VISIBLE);
+//        mToggleSwitchView.setVisibility(View.VISIBLE);z
         Resources resources = getContext().getResources();
         int imageResource = R.drawable.ic_video_overlay;
         String contentDescription = resources.getString(R.string.accessibility_reload_video);

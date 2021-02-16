@@ -42,6 +42,17 @@ public class TrimControllerOverlay extends CommonControllerOverlay  {
             mPlayPauseReplayView.setAlpha(1f);
         }
     }
+    public void hideToggle() {
+        mToggleSwitchView.setVisibility(View.GONE);
+    }
+
+    public void showToggle() {
+        mToggleSwitchView.setVisibility(View.VISIBLE);
+    }
+
+    public void setSwitchText(String text) {
+        mToggleSwitchTextView.setText(text);
+    }
     @Override
     public void showPlaying() {
         super.showPlaying();
