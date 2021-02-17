@@ -56,6 +56,10 @@ public class TrimControllerOverlay extends CommonControllerOverlay  {
         return mToggleSwitch.isChecked();
     }
 
+    public void setMaxDuration(int maxDuration) {
+        ((TrimTimeBar) mTimeBar).setMaxDuration(maxDuration);
+    }
+
     public void showToggleCoachMark(final String message) {
         mToggleSwitch.post(new Runnable() {
             public void run() {

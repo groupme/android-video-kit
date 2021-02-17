@@ -168,6 +168,7 @@ public class TrimVideo extends Activity implements
                             mTrimEndTime = mTrimStartTime + mMaxDuration;
                         }
                         mTrimEndTime = mTrimStartTime + mMaxDuration;
+                        mController.setMaxDuration(mMaxDuration);
                         mController.setTimes(mTrimStartTime, mDuration, mTrimStartTime, mTrimEndTime);
                     }
                 });
