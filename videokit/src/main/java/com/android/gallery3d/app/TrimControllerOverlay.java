@@ -61,12 +61,10 @@ public class TrimControllerOverlay extends CommonControllerOverlay  {
     }
 
     public void showToggleCoachMark(final String message) {
-        mToggleSwitch.post(new Runnable() {
-            public void run() {
+        mToggleSwitch.post(() -> {
                 BubbleCoachMark.BubbleCoachMarkBuilder coachMarkBuilder = new BubbleCoachMark.BubbleCoachMarkBuilder(getContext(), mToggleSwitch, message);
                 BubbleCoachMark bubbleCoachMark = new BubbleCoachMark(coachMarkBuilder);
                 bubbleCoachMark.show();
-            }
         });
 
     }

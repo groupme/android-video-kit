@@ -121,6 +121,7 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
             mToggleSwitch.setTrackTintList(trackColor);
         }
         mToggleSwitchView.addView(mToggleSwitch, wrapContent);
+        mToggleSwitchView.setMinimumHeight(64);
         addView(mToggleSwitchView, matchParent);
         hide();
     }
@@ -261,9 +262,9 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
         // component.
         // But extend the background to the width of the screen, since we don't
         // care if it will be covered by a system component and it looks better.
-        mBackground.layout(0, y - (int) (1.5 * mTimeBar.getBarHeight()), w, y);
+        mToggleSwitchView.layout(0, y - mTimeBar.getPreferredHeight() - mToggleSwitchView.getMinimumHeight(), w, y - mTimeBar.getPreferredHeight());
+        mBackground.layout(0, y - mTimeBar.getBarHeight() - mToggleSwitchView.getHeight(), w, y);
         mTimeBar.layout(pl, y - mTimeBar.getPreferredHeight(), w - pr, y);
-        mToggleSwitchView.layout(0, y - (int) (1.5 * mTimeBar.getPreferredHeight())  , w, y);
         // Put the play/pause/next/ previous button in the center of the screen
         layoutCenteredView(mPlayPauseReplayView, 0, 0, w, h);
         if (mMainView != null) {
