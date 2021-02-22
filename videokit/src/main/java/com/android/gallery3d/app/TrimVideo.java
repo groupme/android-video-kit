@@ -153,23 +153,20 @@ public class TrimVideo extends Activity implements
                 if(!TextUtils.isEmpty(coachMarkMessage)) {
                     mController.showToggleCoachMark(coachMarkMessage);
                 }
-                mController.mToggleSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                        mToggleSwitchState = b;
-                        if(mToggleSwitchState) {
-                            mMaxDuration = getIntent().getIntExtra(EXTRA_TOGGLE_MAX_DURATION, mMaxDuration);
-                        } else {
-                            mMaxDuration = getIntent().getIntExtra(EXTRA_MAX_DURATION, mMaxDuration);
-                        }
-                        if(mTrimStartTime + mMaxDuration > mDuration) {
-                            mTrimEndTime = mDuration;
-                        } else {
-                            mTrimEndTime = mTrimStartTime + mMaxDuration;
-                        }
-                        mController.setMaxDuration(mMaxDuration);
-                        mController.setTimes(mTrimStartTime, mDuration, mTrimStartTime, mTrimEndTime);
+                mController.mToggleSwitch.setOnCheckedChangeListener((compoundButton, b) -> {
+                    mToggleSwitchState = b;
+                    if(mToggleSwitchState) {
+                        mMaxDuration = getIntent().getIntExtra(EXTRA_TOGGLE_MAX_DURATION, mMaxDuration);
+                    } else {
+                        mMaxDuration = getIntent().getIntExtra(EXTRA_MAX_DURATION, mMaxDuration);
                     }
+                    if(mTrimStartTime + mMaxDuration > mDuration) {
+                        mTrimEndTime = mDuration;
+                    } else {
+                        mTrimEndTime = mTrimStartTime + mMaxDuration;
+                    }
+                    mController.setMaxDuration(mMaxDuration);
+                    mController.setTimes(mTrimStartTime, mDuration, mTrimStartTime, mTrimEndTime);
                 });
 
             } else {
