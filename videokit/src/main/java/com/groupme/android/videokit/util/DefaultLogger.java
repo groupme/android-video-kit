@@ -1,7 +1,9 @@
 package com.groupme.android.videokit.util;
 
+import android.annotation.SuppressLint;
 import android.util.Log;
 
+@SuppressLint("LogTagMismatch")
 public class DefaultLogger implements Logger  {
     public static final String LOG_TAG = "VideoKit";
 
