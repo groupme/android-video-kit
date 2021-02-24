@@ -22,6 +22,8 @@ import android.os.Build;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.swiftkey.cornedbeef.BubbleCoachMark;
+
 /**
  * The controller for the Trimming Video.
  */
@@ -41,6 +43,34 @@ public class TrimControllerOverlay extends CommonControllerOverlay  {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
             mPlayPauseReplayView.setAlpha(1f);
         }
+    }
+    public void hideToggle() {
+        mToggleSwitchView.setVisibility(View.GONE);
+    }
+
+    public void showToggle() {
+        mToggleSwitchView.setVisibility(View.VISIBLE);
+    }
+
+    public boolean getToggleState() {
+        return mToggleSwitch.isChecked();
+    }
+
+    public void setMaxDuration(int maxDuration) {
+        ((TrimTimeBar) mTimeBar).setMaxDuration(maxDuration);
+    }
+
+    public void showToggleCoachMark(final String message) {
+        mToggleSwitch.post(() -> {
+                BubbleCoachMark.BubbleCoachMarkBuilder coachMarkBuilder = new BubbleCoachMark.BubbleCoachMarkBuilder(getContext(), mToggleSwitch, message);
+                BubbleCoachMark bubbleCoachMark = new BubbleCoachMark(coachMarkBuilder);
+                bubbleCoachMark.show();
+        });
+
+    }
+
+    public void setSwitchText(String text) {
+        mToggleSwitch.setText(text);
     }
     @Override
     public void showPlaying() {

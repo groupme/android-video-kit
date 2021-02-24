@@ -13,5 +13,9 @@ allprojects {
         mavenLocal()
         google()
         jcenter()
+
+        maven {
+            url 'https://pkgs.dev.azure.com/groupme/public/_packaging/oss/maven/v1'
+        }
     }
 }

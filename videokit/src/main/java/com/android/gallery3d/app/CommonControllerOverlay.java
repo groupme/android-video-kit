@@ -16,6 +16,7 @@
 package com.android.gallery3d.app;
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Rect;
 import android.os.Build;
@@ -30,6 +31,7 @@ import android.widget.ImageView.ScaleType;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.groupme.android.videokit.R;
@@ -58,6 +60,8 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
     protected final TextView mErrorView;
     protected final ImageView mPlayPauseReplayView;
     protected State mState;
+    protected final LinearLayout mToggleSwitchView;
+    protected Switch mToggleSwitch;
     protected boolean mCanReplay = true;
     public void setSeekable(boolean canSeek) {
         mTimeBar.setSeekable(canSeek);
@@ -104,6 +108,21 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
                 new RelativeLayout.LayoutParams(
                         LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
         setLayoutParams(params);
+
+
+        mToggleSwitchView = new LinearLayout(context);
+        mToggleSwitchView.setOrientation(LinearLayout.HORIZONTAL);
+        mToggleSwitchView.setGravity(Gravity.CENTER_HORIZONTAL);
+        mToggleSwitch = new Switch(context);
+        mToggleSwitch.setTextColor(getResources().getColor(R.color.white));
+        mToggleSwitch.setTextSize(16);
+        ColorStateList trackColor = ColorStateList.valueOf(getResources().getColor(R.color.white));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            mToggleSwitch.setTrackTintList(trackColor);
+        }
+        mToggleSwitchView.addView(mToggleSwitch, wrapContent);
+        mToggleSwitchView.setMinimumHeight(64);
+        addView(mToggleSwitchView, matchParent);
         hide();
     }
     abstract protected void createTimeBar(Context context);
@@ -165,6 +184,7 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
         mLoadingView.setVisibility(View.INVISIBLE);
         mBackground.setVisibility(View.INVISIBLE);
         mTimeBar.setVisibility(View.INVISIBLE);
+        mToggleSwitchView.setVisibility(View.INVISIBLE);
         setVisibility(View.INVISIBLE);
         setFocusable(true);
         requestFocus();
@@ -242,7 +262,8 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
         // component.
         // But extend the background to the width of the screen, since we don't
         // care if it will be covered by a system component and it looks better.
-        mBackground.layout(0, y - mTimeBar.getBarHeight(), w, y);
+        mToggleSwitchView.layout(0, y - mTimeBar.getPreferredHeight() - mToggleSwitchView.getMinimumHeight(), w, y - mTimeBar.getPreferredHeight());
+        mBackground.layout(0, y - mTimeBar.getBarHeight() - mToggleSwitchView.getHeight(), w, y);
         mTimeBar.layout(pl, y - mTimeBar.getPreferredHeight(), w - pr, y);
         // Put the play/pause/next/ previous button in the center of the screen
         layoutCenteredView(mPlayPauseReplayView, 0, 0, w, h);
