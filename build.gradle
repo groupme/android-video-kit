@@ -15,7 +15,7 @@ allprojects {
         jcenter()
 
         maven {
-            url "https://jitpack.io"
+            url 'https://pkgs.dev.azure.com/groupme/public/_packaging/oss/maven/v1'
         }
     }
 }
