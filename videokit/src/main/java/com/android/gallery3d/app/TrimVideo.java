@@ -94,6 +94,10 @@ public class TrimVideo extends Activity implements
         return mUri;
     }
 
+    protected void showProcessing() {
+        mController.showLoading(getResources().getString(R.string.processing));
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         try {

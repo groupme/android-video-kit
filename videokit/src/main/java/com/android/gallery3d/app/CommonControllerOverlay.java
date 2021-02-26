@@ -57,6 +57,7 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
     protected TimeBar mTimeBar;
     protected View mMainView;
     protected final LinearLayout mLoadingView;
+    protected TextView mLoadingTextView;
     protected final TextView mErrorView;
     protected final ImageView mPlayPauseReplayView;
     protected State mState;
@@ -89,9 +90,9 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
         ProgressBar spinner = new ProgressBar(context);
         spinner.setIndeterminate(true);
         mLoadingView.addView(spinner, wrapContent);
-        TextView loadingText = createOverlayTextView(context);
-        loadingText.setText(R.string.loading_video);
-        mLoadingView.addView(loadingText, wrapContent);
+        mLoadingTextView = createOverlayTextView(context);
+        mLoadingTextView.setText(R.string.loading_video);
+        mLoadingView.addView(mLoadingTextView, wrapContent);
         addView(mLoadingView, wrapContent);
         mPlayPauseReplayView = new ImageView(context);
         mPlayPauseReplayView.setImageResource(R.drawable.ic_video_overlay);
@@ -178,6 +179,11 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
     public void setTimes(int currentTime, int totalTime,
             int trimStartTime, int trimEndTime) {
         mTimeBar.setTime(currentTime, totalTime, trimStartTime, trimEndTime);
+    }
+
+    public void showLoading(String loadingText) {
+        mLoadingTextView.setText(loadingText);
+        showLoading();
     }
     public void hide() {
         mPlayPauseReplayView.setVisibility(View.INVISIBLE);
