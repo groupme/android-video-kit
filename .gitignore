@@ -11,7 +11,6 @@ gen*
 # local configuration files
 local.properties
 store.properties
-gradle.properties
 
 # IDE project files
 *.iws
