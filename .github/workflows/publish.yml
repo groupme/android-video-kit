@@ -29,17 +29,23 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build test
 
-    - name: Publish version to GroupMe OSS feed
+    - name: Parse release version
       run: |
         PUBLISH_VERSION=$(echo "${{ github.event.release.tag_name }}" | sed "s/^v//")
-        mvn deploy:deploy-file \
-        -DrepositoryId=oss
-        -Durl="https://pkgs.dev.azure.com/groupme/public/_packaging/oss/maven/v1" \
-        -Dfile="videokit/build/outputs/aar/videokit-release.aar" \
-        -Dpackaging=aar \
-        -DgroupId="com.groupme.android" \
-        -DartifactId="videokit" \
-        -Dversion="$PUBLISH_VERSION"
+        echo "PUBLISH_VERSION=$PUBLISH_VERSION" >> $GITHUB_ENV
+
+    - name: Upload release asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: videokit/build/outputs/aar/videokit-release.aar
+        asset_name: videokit-${{ env.PUBLISH_VERSION }}.aar
+        asset_content_type: application/java-archive
+
+    - name: Publish release to GroupMe OSS feed
+      run: mvn deploy:deploy-file -DrepositoryId=oss -Durl="https://pkgs.dev.azure.com/groupme/public/_packaging/oss/maven/v1" -Dfile="videokit/build/outputs/aar/videokit-release.aar" -Dpackaging=aar -DgroupId="com.groupme.android" -DartifactId="videokit" -Dversion="${{ env.PUBLISH_VERSION }}"
       env:
         MAVEN_USER: groupme
         MAVEN_TOKEN: ${{ secrets.ADO_PUBLISHING_TOKEN }}
