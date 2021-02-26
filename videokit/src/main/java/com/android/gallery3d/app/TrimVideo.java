@@ -94,8 +94,8 @@ public class TrimVideo extends Activity implements
         return mUri;
     }
 
-    protected void showLoading() {
-        mController.showLoading();
+    protected void showProcessing() {
+        mController.showLoading(getResources().getString(R.string.processing));
     }
 
     @Override
