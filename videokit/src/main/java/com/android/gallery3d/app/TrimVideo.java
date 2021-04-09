@@ -73,6 +73,7 @@ public class TrimVideo extends Activity implements
     public static final String KEY_TRIM_END = "trim_end";
     public static final String KEY_VIDEO_POSITION = "video_pos";
     private int mDuration;
+    private ProgressDialog mProcessingDialog;
 
     protected int getTrimStartTime() {
         return mTrimStartTime;
@@ -94,8 +95,24 @@ public class TrimVideo extends Activity implements
         return mUri;
     }
 
-    protected void showProcessing() {
-        mController.showLoading(getResources().getString(R.string.processing));
+    protected void showProcessing(String message) {
+        // Show an overlay popup that it's processing
+        // disable trimmer controls
+        mProcessingDialog = new ProgressDialog(this);
+        mProcessingDialog.setTitle(R.string.processing);
+        mProcessingDialog.setIndeterminate(true);
+        mProcessingDialog.setCanceledOnTouchOutside(false);
+        mProcessingDialog.setCancelable(false);
+        mProcessingDialog.setMessage(message);
+        mProcessingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        mProcessingDialog.show();
+    }
+
+    protected void hideProcessing() {
+        if(mProcessingDialog != null) {
+            mProcessingDialog.dismiss();
+            mProcessingDialog = null;
+        }
     }
 
     @Override

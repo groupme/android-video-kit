@@ -4,10 +4,22 @@
         <item name="android:actionBarStyle">@style/Widget.Videokit.ActionBar.Black</item>
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:actionMenuTextColor">@android:color/white</item>
+        <item name="android:alertDialogTheme">@style/AlertDialogStyle</item>
     </style>
 
     <style name="Widget.Videokit.ActionBar.Black" parent="android:Widget.Holo.ActionBar">
         <item name="android:background">@color/black85</item>
         <item name="android:textColor">@android:color/white</item>
+    </style>
+
+    <style name="AlertDialogStyle" parent="android:Theme.Holo.Dialog">
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:lineSpacingMultiplier">1.2</item>
+        <item name="android:layout_gravity">center</item>
+        <item name="android:windowTitleStyle">@style/WindowTitleTextAppearance</item>
+    </style>
+
+    <style name="WindowTitleTextAppearance">
+        <item name="android:textSize">20sp</item>
     </style>
 </resources>
