@@ -15,8 +15,6 @@
     <style name="AlertDialogStyle" parent="android:Theme.Holo.Dialog">
         <item name="android:textColor">@android:color/white</item>
         <item name="android:lineSpacingMultiplier">1.2</item>
-        <item name="android:windowBackground">@drawable/background_dialog</item>
-        <item name="android:background">@android:color/transparent</item>
         <item name="android:layout_gravity">center</item>
         <item name="android:windowTitleStyle">@style/WindowTitleTextAppearance</item>
     </style>

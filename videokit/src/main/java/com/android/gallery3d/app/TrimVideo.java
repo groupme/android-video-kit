@@ -102,7 +102,9 @@ public class TrimVideo extends Activity implements
         mProcessingDialog.setTitle(R.string.processing);
         mProcessingDialog.setIndeterminate(true);
         mProcessingDialog.setCanceledOnTouchOutside(false);
+        mProcessingDialog.setCancelable(false);
         mProcessingDialog.setMessage(message);
+        mProcessingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
         mProcessingDialog.show();
     }
 
