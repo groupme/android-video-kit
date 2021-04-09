@@ -181,10 +181,6 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
         mTimeBar.setTime(currentTime, totalTime, trimStartTime, trimEndTime);
     }
 
-    public void showLoading(String loadingText) {
-        mLoadingTextView.setText(loadingText);
-        showLoading();
-    }
     public void hide() {
         mPlayPauseReplayView.setVisibility(View.INVISIBLE);
         mLoadingView.setVisibility(View.INVISIBLE);
