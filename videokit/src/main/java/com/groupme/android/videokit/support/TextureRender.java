@@ -16,14 +16,12 @@
 
 package com.groupme.android.videokit.support;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-import android.annotation.TargetApi;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;
@@ -36,7 +34,6 @@ import android.util.Log;
  * Code for rendering a texture onto a surface using OpenGL ES 2.0.
  */
 
-@TargetApi(11)
 public class TextureRender {
     private static final String TAG = "TextureRender";
 
@@ -52,7 +49,7 @@ public class TextureRender {
          1.0f,  1.0f, 0, 1.f, 1.f,
     };
 
-    private FloatBuffer mTriangleVertices;
+    private final FloatBuffer mTriangleVertices;
 
     private static final String VERTEX_SHADER =
             "uniform mat4 uMVPMatrix;\n" +
@@ -74,8 +71,8 @@ public class TextureRender {
             "  gl_FragColor = texture2D(sTexture, vTextureCoord);\n" +
             "}\n";
 
-    private float[] mMVPMatrix = new float[16];
-    private float[] mSTMatrix = new float[16];
+    private final float[] mMVPMatrix = new float[16];
+    private final float[] mSTMatrix = new float[16];
 
     private int mProgram;
     private int mTextureID = -12345;
@@ -254,7 +251,7 @@ public class TextureRender {
      * <p>
      * Useful for debugging.
      */
-    public static void saveFrame(String filename, int width, int height) {
+    public static void saveFrame(String filename, int width, int height) throws RuntimeException {
         // glReadPixels gives us a ByteBuffer filled with what is essentially big-endian RGBA
         // data (i.e. a byte of red, followed by a byte of green...).  We need an int[] filled
         // with native-order ARGB data to feed to Bitmap.

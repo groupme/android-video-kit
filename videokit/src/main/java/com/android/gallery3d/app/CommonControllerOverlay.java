@@ -226,10 +226,7 @@ public abstract class CommonControllerOverlay extends FrameLayout implements
     }
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (super.onTouchEvent(event)) {
-            return true;
-        }
-        return false;
+        return super.onTouchEvent(event);
     }
     // The paddings of 4 sides which covered by system components. E.g.
     // +-----------------+\

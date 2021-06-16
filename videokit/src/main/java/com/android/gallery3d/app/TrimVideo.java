@@ -36,7 +36,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
@@ -61,7 +60,6 @@ public class TrimVideo extends Activity implements
     private int mMaxDuration = 30 * 1000; // 30 seconds
     private VideoView mVideoView;
     private TrimControllerOverlay mController;
-    private Context mContext;
     private Uri mUri;
     private final Handler mHandler = new Handler();
     public ProgressDialog mProgress;
@@ -118,7 +116,7 @@ public class TrimVideo extends Activity implements
     @Override
     public void onCreate(Bundle savedInstanceState) {
         try {
-            mContext = getApplicationContext();
+            Context context = getApplicationContext();
             super.onCreate(savedInstanceState);
             requestWindowFeature(Window.FEATURE_ACTION_BAR);
             requestWindowFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
@@ -146,7 +144,7 @@ public class TrimVideo extends Activity implements
             setContentView(R.layout.trim_view);
             View rootView = findViewById(R.id.trim_view_root);
             mVideoView = (VideoView) rootView.findViewById(R.id.surface_view);
-            mController = new TrimControllerOverlay(mContext, mMaxDuration);
+            mController = new TrimControllerOverlay(context, mMaxDuration);
             ((ViewGroup) rootView).addView(mController.getView());
             mController.setListener(this);
             mController.setCanReplay(true);
@@ -156,7 +154,7 @@ public class TrimVideo extends Activity implements
             if (ContentResolver.SCHEME_FILE.equals(mUri.getScheme())) {
                 retriever.setDataSource(mUri.getPath());
             } else {
-                retriever.setDataSource(mContext, mUri);
+                retriever.setDataSource(context, mUri);
             }
 
             mDuration = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
@@ -181,11 +179,7 @@ public class TrimVideo extends Activity implements
                     } else {
                         mMaxDuration = getIntent().getIntExtra(EXTRA_MAX_DURATION, mMaxDuration);
                     }
-                    if(mTrimStartTime + mMaxDuration > mDuration) {
-                        mTrimEndTime = mDuration;
-                    } else {
-                        mTrimEndTime = mTrimStartTime + mMaxDuration;
-                    }
+                    mTrimEndTime = Math.min(mTrimStartTime + mMaxDuration, mDuration);
                     mController.setMaxDuration(mMaxDuration);
                     mController.setTimes(mTrimStartTime, mDuration, mTrimStartTime, mTrimEndTime);
                 });

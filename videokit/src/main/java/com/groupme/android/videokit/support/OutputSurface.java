@@ -53,7 +53,7 @@ public class OutputSurface implements SurfaceTexture.OnFrameAvailableListener {
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
 
-    private Object mFrameSyncObject = new Object();     // guards mFrameAvailable
+    private final Object mFrameSyncObject = new Object();     // guards mFrameAvailable
     private boolean mFrameAvailable;
 
     private TextureRender mTextureRender;
@@ -252,7 +252,7 @@ public class OutputSurface implements SurfaceTexture.OnFrameAvailableListener {
 
     /**
      * Wait up to given timeout until new image become available.
-     * @param timeoutMs
+     * @param timeoutMs The amount of time to wait in milliseconds
      * @return true if new image is available. false for no new image until timeout.
      */
     public boolean checkForNewImage(int timeoutMs) {
