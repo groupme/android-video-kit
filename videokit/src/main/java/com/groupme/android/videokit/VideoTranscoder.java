@@ -28,6 +28,7 @@ import com.groupme.android.videokit.util.MediaInfo;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class VideoTranscoder {
@@ -56,7 +57,7 @@ public class VideoTranscoder {
     private int mOutputVideoFrameRate;
     private int mOutputVideoIFrameInterval;
 
-    private int mOutputAudioBitRate = Defaults.OUTPUT_AUDIO_BIT_RATE;
+    private final int mOutputAudioBitRate = Defaults.OUTPUT_AUDIO_BIT_RATE;
 
     private long mTrimStartTime = 0;
     private long mTrimEndTime = TRIM_TIME_END;
@@ -114,7 +115,7 @@ public class VideoTranscoder {
         mIncludeAudio = copyAudio;
     }
 
-    public void start(final Listener listener) throws IOException {
+    public void start(final Listener listener) {
         if (mContext == null) {
             throw new IllegalStateException("Context cannot be null");
         }
@@ -123,24 +124,18 @@ public class VideoTranscoder {
             throw new IllegalStateException("Source Uri cannot be null. Make sure to call source()");
         }
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                final boolean success = startSync();
+        new Thread(() -> {
+            final boolean success = startSync();
 
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (listener != null) {
-                            if (success) {
-                                listener.onSuccess(mStats);
-                            } else {
-                                listener.onFailure();
-                            }
-                        }
+            new Handler(Looper.getMainLooper()).post(() -> {
+                if (listener != null) {
+                    if (success) {
+                        listener.onSuccess(mStats);
+                    } else {
+                        listener.onFailure();
                     }
-                });
-            }
+                }
+            });
         }).start();
     }
 
@@ -475,18 +470,18 @@ public class VideoTranscoder {
 
         int decoderInputBufferIndex = decoder.dequeueInputBuffer(TIMEOUT_USEC);
         if (decoderInputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-            mLogger.d(String.format("no %s decoder input buffer", type));
+            mLogger.d(String.format(Locale.US, "no %s decoder input buffer", type));
             return false;
         }
 
-        mLogger.d(String.format("%s decoder: returned input buffer: %d", type, decoderInputBufferIndex));
+        mLogger.d(String.format(Locale.US, "%s decoder: returned input buffer: %d", type, decoderInputBufferIndex));
 
         MediaExtractor extractor = component.getMediaExtractor();
         int size = extractor.readSampleData(buffers[decoderInputBufferIndex], 0);
         long presentationTime = extractor.getSampleTime();
 
-        mLogger.d(String.format("%s extractor: returned buffer of size %d", type, size));
-        mLogger.d(String.format("%s extractor: returned buffer for time %d", type, presentationTime));
+        mLogger.d(String.format(Locale.US, "%s extractor: returned buffer of size %d", type, size));
+        mLogger.d(String.format(Locale.US, "%s extractor: returned buffer for time %d", type, presentationTime));
 
         if (mTrimEndTime > 0 && presentationTime > (mTrimEndTime * 1000)) {
             mLogger.d("The current sample is over the trim time. Lets stop.");
@@ -536,8 +531,8 @@ public class VideoTranscoder {
 
     /**
      * Extract frame for decoder and feed to encoder.
-     * @param videoDecoderOutputBufferInfo
-     * @return
+     * @param videoDecoderOutputBufferInfo BufferInfo from the video decoder
+     * @return true if video was completely polled from decoder and fed to encoder, false otherwise
      */
     private boolean pollVideoFromDecoderAndFeedToEncoder(MediaCodec.BufferInfo videoDecoderOutputBufferInfo) {
         int decoderOutputBufferIndex = mVideoDecoder.dequeueOutputBuffer(videoDecoderOutputBufferInfo, TIMEOUT_USEC);
@@ -564,9 +559,9 @@ public class VideoTranscoder {
             return false;
         }
 
-        mLogger.d(String.format("video decoder: returned output buffer: %s", decoderOutputBufferIndex));
-        mLogger.d(String.format("video decoder: returned buffer of size %s", videoDecoderOutputBufferInfo.size));
-        mLogger.d(String.format("video decoder: returned buffer for time %d", videoDecoderOutputBufferInfo.presentationTimeUs));
+        mLogger.d(String.format(Locale.US, "video decoder: returned output buffer: %s", decoderOutputBufferIndex));
+        mLogger.d(String.format(Locale.US, "video decoder: returned buffer of size %s", videoDecoderOutputBufferInfo.size));
+        mLogger.d(String.format(Locale.US, "video decoder: returned buffer for time %d", videoDecoderOutputBufferInfo.presentationTimeUs));
 
         boolean render = videoDecoderOutputBufferInfo.size != 0;
 
@@ -594,7 +589,7 @@ public class VideoTranscoder {
 
     /**
      *
-     * @param audioDecoderOutputBufferInfo
+     * @param audioDecoderOutputBufferInfo BufferInfo from the audio decoder
      */
     private void pollAudioFromDecoder(MediaCodec.BufferInfo audioDecoderOutputBufferInfo) {
         int decoderOutputBufferIndex = mAudioDecoder.dequeueOutputBuffer(audioDecoderOutputBufferInfo, TIMEOUT_USEC);
@@ -612,12 +607,12 @@ public class VideoTranscoder {
 
         if (decoderOutputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
             mDecoderOutputAudioFormat = mAudioDecoder.getOutputFormat();
-            mLogger.d(String.format("audio decoder: output format changed: %s", mDecoderOutputAudioFormat));
+            mLogger.d(String.format(Locale.US, "audio decoder: output format changed: %s", mDecoderOutputAudioFormat));
             return;
         }
 
-        mLogger.d(String.format("audio decoder: returned output buffer: %d", decoderOutputBufferIndex));
-        mLogger.d(String.format("audio decoder: returned buffer of size %d", audioDecoderOutputBufferInfo.size));
+        mLogger.d(String.format(Locale.US, "audio decoder: returned output buffer: %d", decoderOutputBufferIndex));
+        mLogger.d(String.format(Locale.US, "audio decoder: returned buffer of size %d", audioDecoderOutputBufferInfo.size));
 
         if ((audioDecoderOutputBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
             mLogger.d("audio decoder: codec config buffer");
@@ -634,29 +629,28 @@ public class VideoTranscoder {
 
     /**
      *
-     * @param audioDecoderOutputBufferInfo
-     * @return
+     * @param audioDecoderOutputBufferInfo Audio buffer to be processed
      */
-    private boolean feedPendingAudioBufferToEncoder(MediaCodec.BufferInfo audioDecoderOutputBufferInfo) {
-        mLogger.d(String.format("audio decoder: attempting to process pending buffer: %d", mPendingAudioDecoderOutputBufferIndex));
+    private void feedPendingAudioBufferToEncoder(MediaCodec.BufferInfo audioDecoderOutputBufferInfo) {
+        mLogger.d(String.format(Locale.US, "audio decoder: attempting to process pending buffer: %d", mPendingAudioDecoderOutputBufferIndex));
 
         int encoderInputBufferIndex = mAudioEncoder.dequeueInputBuffer(TIMEOUT_USEC);
 
         if (encoderInputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
             mLogger.d("no audio encoder input buffer");
-            return false;
+            return;
         }
 
-        mLogger.d(String.format("audio encoder: returned input buffer: %d", encoderInputBufferIndex));
+        mLogger.d(String.format(Locale.US, "audio encoder: returned input buffer: %d", encoderInputBufferIndex));
 
         ByteBuffer encoderInputBuffer = mAudioEncoderInputBuffers[encoderInputBufferIndex];
 
         int size = audioDecoderOutputBufferInfo.size;
         long presentationTime = audioDecoderOutputBufferInfo.presentationTimeUs;
 
-        mLogger.d(String.format("audio decoder: processing pending buffer: %d", mPendingAudioDecoderOutputBufferIndex));
-        mLogger.d(String.format("audio decoder: pending buffer of size %s", size));
-        mLogger.d(String.format("audio decoder: pending buffer for time %s", presentationTime));
+        mLogger.d(String.format(Locale.US, "audio decoder: processing pending buffer: %d", mPendingAudioDecoderOutputBufferIndex));
+        mLogger.d(String.format(Locale.US, "audio decoder: pending buffer of size %s", size));
+        mLogger.d(String.format(Locale.US, "audio decoder: pending buffer for time %s", presentationTime));
 
         if (size >= 0) {
             ByteBuffer decoderOutputBuffer = mAudioDecoderOutputBuffers[mPendingAudioDecoderOutputBufferIndex].duplicate();
@@ -678,16 +672,13 @@ public class VideoTranscoder {
 
         if ((audioDecoderOutputBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
             mLogger.d("audio decoder: EOS");
-            return true;
         }
-
-        return false;
     }
 
     /**
      *
-     * @param videoEncoderOutputBufferInfo
-     * @return
+     * @param videoEncoderOutputBufferInfo BufferInfo from the video encoder
+     * @return true if video was successfully polled from encoder and fed to muxer, false otherwise
      */
     private boolean pollVideoFromEncoderAndFeedToMuxer(MediaCodec.BufferInfo videoEncoderOutputBufferInfo) {
         int encoderOutputBufferIndex = mVideoEncoder.dequeueOutputBuffer(videoEncoderOutputBufferInfo, TIMEOUT_USEC);
@@ -724,9 +715,9 @@ public class VideoTranscoder {
 //            throw new IllegalStateException("should have added track before processing output");
 //        }
 
-        mLogger.d(String.format("video encoder: returned output buffer: %d", encoderOutputBufferIndex));
-        mLogger.d(String.format("video encoder: returned buffer of size %d", videoEncoderOutputBufferInfo.size));
-        mLogger.d(String.format("video encoder: returned buffer for time %d", videoEncoderOutputBufferInfo.presentationTimeUs));
+        mLogger.d(String.format(Locale.US, "video encoder: returned output buffer: %d", encoderOutputBufferIndex));
+        mLogger.d(String.format(Locale.US, "video encoder: returned buffer of size %d", videoEncoderOutputBufferInfo.size));
+        mLogger.d(String.format(Locale.US, "video encoder: returned buffer for time %d", videoEncoderOutputBufferInfo.presentationTimeUs));
 
         ByteBuffer encoderOutputBuffer = mVideoEncoderOutputBuffers[encoderOutputBufferIndex];
         if (videoEncoderOutputBufferInfo.size != 0) {
@@ -781,9 +772,9 @@ public class VideoTranscoder {
 //            throw new IllegalStateException("should have added track before processing output");
 //        }
 
-        mLogger.d(String.format("audio encoder: returned output buffer: %d", encoderOutputBufferIndex));
-        mLogger.d(String.format("audio encoder: returned buffer of size %d", audioEncoderOutputBufferInfo.size));
-        mLogger.d(String.format("audio encoder: returned buffer for time %d", audioEncoderOutputBufferInfo.presentationTimeUs));
+        mLogger.d(String.format(Locale.US, "audio encoder: returned output buffer: %d", encoderOutputBufferIndex));
+        mLogger.d(String.format(Locale.US, "audio encoder: returned buffer of size %d", audioEncoderOutputBufferInfo.size));
+        mLogger.d(String.format(Locale.US, "audio encoder: returned buffer for time %d", audioEncoderOutputBufferInfo.presentationTimeUs));
 
         if (audioEncoderOutputBufferInfo.size != 0) {
             ByteBuffer encoderOutputBuffer = mAudioEncoderOutputBuffers[encoderOutputBufferIndex];
@@ -824,11 +815,8 @@ public class VideoTranscoder {
     }
 
     /**
-     * Returns the first codec capable of encoding the specified MIME type,
-     * or null if no match was found.
-     *
      * @param mimeType specified MIME type
-     * @return
+     * @return The first codec capable of encoding the specified MIME type, or null if no match was found.
      */
     private MediaCodecInfo selectCodec(String mimeType) {
         int numCodecs = MediaCodecList.getCodecCount();
@@ -840,8 +828,8 @@ public class VideoTranscoder {
             }
 
             String[] types = codecInfo.getSupportedTypes();
-            for (int j = 0; j < types.length; j++) {
-                if (types[j].equalsIgnoreCase(mimeType)) {
+            for (String type : types) {
+                if (type.equalsIgnoreCase(mimeType)) {
                     mLogger.d(String.format("Codec %s found for mime type %s", codecInfo.getName(), mimeType));
                     return codecInfo;
                 }
@@ -946,7 +934,7 @@ public class VideoTranscoder {
     private void createVideoEncoder() throws IOException {
         // Create a MediaCodec for the desired codec, then configure it as an encoder with
         // our desired properties. Request a Surface to use for input.
-        AtomicReference<Surface> inputSurfaceReference = new AtomicReference<Surface>();
+        AtomicReference<Surface> inputSurfaceReference = new AtomicReference<>();
 
         MediaCodecInfo codecInfo = selectCodec(Defaults.OUTPUT_VIDEO_MIME_TYPE);
 

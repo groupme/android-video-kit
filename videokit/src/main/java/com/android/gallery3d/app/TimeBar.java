@@ -26,6 +26,8 @@ import android.view.View;
 
 import com.groupme.android.videokit.R;
 
+import java.util.Locale;
+
 /**
  * The time bar view, which includes the current and total time, the progress
  * bar, and the scrubber.
@@ -41,7 +43,7 @@ public class TimeBar extends View {
     // The total padding, top plus bottom
     private static final int V_PADDING_IN_DP = 30;
     private static final int TEXT_SIZE_IN_DP = 14;
-    protected final Listener mListener;
+    protected Listener mListener;
     // the bars we use for displaying the progress
     protected final Rect mProgressBar;
     protected final Rect mPlayedBar;
@@ -61,9 +63,9 @@ public class TimeBar extends View {
     protected int mCurrentTime;
     protected final Rect mTimeBounds;
     protected int mVPaddingInPx;
-    public TimeBar(Context context, Listener listener) {
+
+    TimeBar(Context context) {
         super(context);
-        mListener = checkNotNull(listener);
         mShowTimes = true;
         mShowScrubber = true;
         mProgressBar = new Rect();
@@ -83,6 +85,10 @@ public class TimeBar extends View {
         mScrubber = BitmapFactory.decodeResource(getResources(), R.drawable.play_scrubber);
         mScrubberPadding = (int) (metrics.density * SCRUBBER_PADDING_IN_DP);
         mVPaddingInPx = (int) (metrics.density * V_PADDING_IN_DP);
+    }
+    public TimeBar(Context context, Listener listener) {
+        this(context);
+        mListener = checkNotNull(listener);
     }
     private void update() {
         mPlayedBar.set(mProgressBar);
@@ -165,13 +171,13 @@ public class TimeBar extends View {
         if (mShowTimes) {
             canvas.drawText(
                     stringForTime(mCurrentTime),
-                            mTimeBounds.width() / 2 + getPaddingLeft(),
-                            mTimeBounds.height() + mVPaddingInPx / 2 + mScrubberPadding + 1,
+                            mTimeBounds.width() / 2f + getPaddingLeft(),
+                            mTimeBounds.height() + mVPaddingInPx / 2f + mScrubberPadding + 1,
                     mTimeTextPaint);
             canvas.drawText(
                     stringForTime(mTotalTime),
                             getWidth() - getPaddingRight() - mTimeBounds.width() / 2,
-                            mTimeBounds.height() + mVPaddingInPx / 2 + mScrubberPadding + 1,
+                            mTimeBounds.height() + mVPaddingInPx / 2f + mScrubberPadding + 1,
                     mTimeTextPaint);
         }
     }
@@ -213,9 +219,9 @@ public class TimeBar extends View {
         int minutes = (totalSeconds / 60) % 60;
         int hours = totalSeconds / 3600;
         if (hours > 0) {
-            return String.format("%d:%02d:%02d", hours, minutes, seconds).toString();
+            return String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds);
         } else {
-            return String.format("%02d:%02d", minutes, seconds).toString();
+            return String.format(Locale.US, "%02d:%02d", minutes, seconds);
         }
     }
     public void setSeekable(boolean canSeek) {

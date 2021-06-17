@@ -22,8 +22,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.MotionEvent;
 
 import com.groupme.android.videokit.R;
@@ -58,8 +56,8 @@ public class TrimTimeBar extends TimeBar {
     private final Bitmap mTrimEndScrubber;
     private int mMaxDuration;
     private int mProgressY;
-    private Rect mSelectionBar;
-    private int mMinDuration = 1 * 1000; // 1 second
+    private final Rect mSelectionBar;
+    private final int mMinDuration = 1000; // 1 second
 
     public TrimTimeBar(Context context, Listener listener) {
         super(context, listener);
@@ -192,8 +190,7 @@ public class TrimTimeBar extends TimeBar {
                 margin += mTimeBounds.width();
             }
             mProgressY = h / 2;
-            int scrubberY = mProgressY - mScrubber.getHeight() / 2 + 1;
-            mScrubberTop = scrubberY;
+            mScrubberTop = mProgressY - mScrubber.getHeight() / 2 + 1;
             mTrimStartScrubberTop = mProgressY - mTrimStartScrubber.getHeight() / 2 + 1;
             mTrimEndScrubberTop = mProgressY - mTrimEndScrubber.getHeight() / 2 + 1;
             mProgressBar.set(
@@ -213,13 +210,13 @@ public class TrimTimeBar extends TimeBar {
         if (mShowTimes) {
             canvas.drawText(
                     stringForTime(mCurrentTime),
-                            mTimeBounds.width() / 2 + getPaddingLeft(),
-                            mTimeBounds.height() / 2 +  mProgressY,
+                            mTimeBounds.width() / 2f + getPaddingLeft(),
+                            mTimeBounds.height() / 2f +  mProgressY,
                     mTimeTextPaint);
             canvas.drawText(
                     stringForTime(mTotalTime),
-                            getWidth() - getPaddingRight() - mTimeBounds.width() / 2,
-                            mTimeBounds.height() / 2 +  mProgressY,
+                            getWidth() - getPaddingRight() - mTimeBounds.width() / 2f,
+                            mTimeBounds.height() / 2f +  mProgressY,
                     mTimeTextPaint);
         }
 
@@ -264,7 +261,7 @@ public class TrimTimeBar extends TimeBar {
                             mScrubberCorrection = x - mTrimEndScrubberLeft;
                             break;
                     }
-                    if (mScrubbing == true) {
+                    if (mScrubbing) {
                         mListener.onScrubbingStart();
                         return true;
                     }

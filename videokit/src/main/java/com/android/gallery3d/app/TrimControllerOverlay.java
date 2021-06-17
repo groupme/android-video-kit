@@ -18,7 +18,6 @@ import android.animation.Animator;
 import android.animation.Animator.AnimatorListener;
 import android.animation.ObjectAnimator;
 import android.content.Context;
-import android.os.Build;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -28,8 +27,12 @@ import com.swiftkey.cornedbeef.BubbleCoachMark;
  * The controller for the Trimming Video.
  */
 public class TrimControllerOverlay extends CommonControllerOverlay  {
-    public TrimControllerOverlay(Context context, int maxDuration) {
+
+    TrimControllerOverlay(Context context) {
         super(context);
+    }
+    public TrimControllerOverlay(Context context, int maxDuration) {
+        this(context);
         ((TrimTimeBar) mTimeBar).setMaxDuration(maxDuration);
     }
     @Override
@@ -40,9 +43,7 @@ public class TrimControllerOverlay extends CommonControllerOverlay  {
         if (mState == State.PLAYING) {
             mPlayPauseReplayView.setVisibility(View.INVISIBLE);
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            mPlayPauseReplayView.setAlpha(1f);
-        }
+        mPlayPauseReplayView.setAlpha(1f);
     }
     public void hideToggle() {
         mToggleSwitchView.setVisibility(View.GONE);
@@ -50,10 +51,6 @@ public class TrimControllerOverlay extends CommonControllerOverlay  {
 
     public void showToggle() {
         mToggleSwitchView.setVisibility(View.VISIBLE);
-    }
-
-    public boolean getToggleState() {
-        return mToggleSwitch.isChecked();
     }
 
     public void setMaxDuration(int maxDuration) {
@@ -75,30 +72,26 @@ public class TrimControllerOverlay extends CommonControllerOverlay  {
     @Override
     public void showPlaying() {
         super.showPlaying();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            // Add animation to hide the play button while playing.
-            ObjectAnimator anim = ObjectAnimator.ofFloat(mPlayPauseReplayView, "alpha", 1f, 0f);
-            anim.setDuration(200);
-            anim.start();
-            anim.addListener(new AnimatorListener() {
-                @Override
-                public void onAnimationStart(Animator animation) {
-                }
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    hidePlayButtonIfPlaying();
-                }
-                @Override
-                public void onAnimationCancel(Animator animation) {
-                    hidePlayButtonIfPlaying();
-                }
-                @Override
-                public void onAnimationRepeat(Animator animation) {
-                }
-            });
-        } else {
-            hidePlayButtonIfPlaying();
-        }
+        // Add animation to hide the play button while playing.
+        ObjectAnimator anim = ObjectAnimator.ofFloat(mPlayPauseReplayView, "alpha", 1f, 0f);
+        anim.setDuration(200);
+        anim.start();
+        anim.addListener(new AnimatorListener() {
+            @Override
+            public void onAnimationStart(Animator animation) {
+            }
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                hidePlayButtonIfPlaying();
+            }
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                hidePlayButtonIfPlaying();
+            }
+            @Override
+            public void onAnimationRepeat(Animator animation) {
+            }
+        });
     }
     @Override
     public void setTimes(int currentTime, int totalTime, int trimStartTime, int trimEndTime) {

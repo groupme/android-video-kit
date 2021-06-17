@@ -1,6 +1,5 @@
 package com.groupme.android.videokit.util;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
@@ -9,14 +8,10 @@ import android.net.Uri;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-@TargetApi(16)
 public class MediaInfo {
-    public static int VALUE_NOT_AVAILABLE = -1;
 
     private final Context mContext;
     private final Uri mMediaUri;
-
-    private MediaExtractor mMediaExtractor;
 
     private MediaFormat mAudioTrackFormat;
     private MediaFormat mVideoTrackFormat;
@@ -53,8 +48,7 @@ public class MediaInfo {
     }
 
     /**
-     * Returns the track duration in seconds.
-     * @return
+     * @return The track duration in seconds
      */
     public long getDuration() {
         long duration = -1;
@@ -85,12 +79,12 @@ public class MediaInfo {
     }
 
     private void extract() throws IOException {
-        mMediaExtractor = new MediaExtractor();
-        mMediaExtractor.setDataSource(mContext, mMediaUri, null);
+        MediaExtractor mediaExtractor = new MediaExtractor();
+        mediaExtractor.setDataSource(mContext, mMediaUri, null);
 
-        int trackCount = mMediaExtractor.getTrackCount();
+        int trackCount = mediaExtractor.getTrackCount();
         for (int i = 0; i < trackCount; i++) {
-            MediaFormat track = mMediaExtractor.getTrackFormat(i);
+            MediaFormat track = mediaExtractor.getTrackFormat(i);
 
             if (isAudioFormat(track)) {
                 mAudioTrackFormat = track;

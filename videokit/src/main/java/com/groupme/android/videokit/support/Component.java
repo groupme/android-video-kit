@@ -1,17 +1,14 @@
 package com.groupme.android.videokit.support;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.net.Uri;
-import android.os.Build;
 
 import com.groupme.android.videokit.util.MediaInfo;
 
 import java.io.IOException;
 
-@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 public class Component {
     public static int COMPONENT_TYPE_AUDIO = 0;
     public static int COMPONENT_TYPE_VIDEO = 1;
@@ -28,10 +25,10 @@ public class Component {
 
     /**
      *
-     * @param context
-     * @param srcUri
-     * @param type
-     * @throws IOException
+     * @param context Context that this component is in
+     * @param srcUri Source uri for the component
+     * @param type Type of component - either audio or video
+     * @throws IOException Thrown if the component type is invalid
      */
     public Component(Context context, Uri srcUri, int type) throws IOException {
         mContext = context;
@@ -47,32 +44,28 @@ public class Component {
     }
 
     /**
-     * The MediaExtractor instance to use to for this component.
-     * @return
+     * @return The MediaExtractor instance to use to for this component.
      */
     public MediaExtractor getMediaExtractor() {
         return mMediaExtractor;
     }
 
     /**
-     * The MediaFormat for the selected track of this component.
-     * @return
+     * @return The MediaFormat for the selected track of this component.
      */
     public MediaFormat getTrackFormat() {
         return mTrackFormat;
     }
 
     /**
-     * The index of the selected track for this component.
-     * @return
+     * @return The index of the selected track for this component.
      */
     public int getSelectedTrackIndex() {
         return mSelectedTrackIndex;
     }
 
     /**
-     * The component type.
-     * @return COMPONENT_TYPE_AUDIO or COMPONENT_TYPE_VIDEO
+     * @return The component type. Either COMPONENT_TYPE_AUDIO or COMPONENT_TYPE_VIDEO
      */
     public int getType() {
         return mType;
@@ -86,7 +79,7 @@ public class Component {
 
     /**
      * create me!
-     * @throws IOException
+     * @throws IOException If unable to create this component
      */
     private void init() throws IOException {
         createExtractor();
@@ -96,7 +89,7 @@ public class Component {
     /**
      * Creates an extractor that reads its frames from {@link #mSrcUri}
      *
-     * @throws java.io.IOException
+     * @throws IOException If unable to create a media extractor for this component
      */
     private void createExtractor() throws IOException {
         mMediaExtractor = new MediaExtractor();

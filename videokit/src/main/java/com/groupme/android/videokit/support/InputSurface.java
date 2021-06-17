@@ -16,14 +16,12 @@
 
 package com.groupme.android.videokit.support;
 
-import android.annotation.TargetApi;
 import android.opengl.EGL14;
 import android.opengl.EGLExt;
 import android.opengl.EGLConfig;
 import android.opengl.EGLContext;
 import android.opengl.EGLDisplay;
 import android.opengl.EGLSurface;
-import android.util.Log;
 import android.view.Surface;
 
 
@@ -34,7 +32,6 @@ import android.view.Surface;
  * to create an EGL window surface.  Calls to eglSwapBuffers() cause a frame of data to be sent
  * to the video encoder.
  */
-@TargetApi(17)
 public class InputSurface {
     private static final String TAG = "InputSurface";
 
