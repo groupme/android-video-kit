@@ -1,7 +1,6 @@
 package com.groupme.android.videokit.samples;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -11,6 +10,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.StrictMode;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.util.Log;
@@ -29,7 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PICK_VIDEO = 0;
     private static final int REQUEST_PICK_VIDEO_FOR_TRIM = 1;
     private static final int REQUEST_TRIM_VIDEO = 2;
@@ -86,7 +86,7 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
             case REQUEST_PICK_VIDEO:
-                if (resultCode == Activity.RESULT_OK) {
+                if (resultCode == AppCompatActivity.RESULT_OK) {
                     mSrcUri = data.getData();
                     if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                             != PackageManager.PERMISSION_GRANTED) {
@@ -99,7 +99,7 @@ public class MainActivity extends Activity {
                 }
                 break;
             case REQUEST_PICK_VIDEO_FOR_TRIM:
-                if (resultCode == Activity.RESULT_OK) {
+                if (resultCode == AppCompatActivity.RESULT_OK) {
                     mSrcUri = data.getData();
 
                     Intent i = new Intent(this, TrimVideo.class);
@@ -111,6 +111,7 @@ public class MainActivity extends Activity {
                 }
                 break;
             case REQUEST_TRIM_VIDEO:
+                data = getIntent();
                 if (data != null) {
                     Log.d("TRIM", String.format("Start: %s End: %s", data.getIntExtra(TrimVideo.START_TIME, -1), data.getIntExtra(TrimVideo.END_TIME, -1)));
 
