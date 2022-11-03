@@ -16,7 +16,6 @@
 package com.android.gallery3d.app;
 import android.annotation.TargetApi;
 import android.app.ActionBar;
-import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -42,8 +41,10 @@ import android.widget.VideoView;
 
 import com.groupme.android.videokit.R;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
-public class TrimVideo extends Activity implements
+public class TrimVideo extends AppCompatActivity implements
         MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener,
         ControllerOverlay.Listener {
@@ -143,7 +144,7 @@ public class TrimVideo extends Activity implements
             mUri = intent.getData();
             setContentView(R.layout.trim_view);
             View rootView = findViewById(R.id.trim_view_root);
-            mVideoView = (VideoView) rootView.findViewById(R.id.surface_view);
+            mVideoView = rootView.findViewById(R.id.surface_view);
             mController = new TrimControllerOverlay(context, mMaxDuration);
             ((ViewGroup) rootView).addView(mController.getView());
             mController.setListener(this);
@@ -213,15 +214,19 @@ public class TrimVideo extends Activity implements
     @Override
     public void onResume() {
         super.onResume();
-        mVideoView.seekTo(mVideoPosition);
-        mVideoView.resume();
+        if (mVideoView != null) {
+            mVideoView.seekTo(mVideoPosition);
+            mVideoView.resume();
+        }
         mHandler.post(mProgressChecker);
     }
     @Override
     public void onPause() {
         mHandler.removeCallbacksAndMessages(null);
-        mVideoPosition = mVideoView.getCurrentPosition();
-        mVideoView.suspend();
+        if (mVideoView != null) {
+            mVideoPosition = mVideoView.getCurrentPosition();
+            mVideoView.suspend();
+        }
         super.onPause();
     }
     @Override
@@ -234,7 +239,9 @@ public class TrimVideo extends Activity implements
     }
     @Override
     public void onDestroy() {
-        mVideoView.stopPlayback();
+        if (mVideoView != null) {
+            mVideoView.stopPlayback();
+        }
         super.onDestroy();
     }
     private final Runnable mProgressChecker = new Runnable() {
@@ -260,7 +267,7 @@ public class TrimVideo extends Activity implements
             results.putExtra(START_TIME, mTrimStartTime);
             results.putExtra(END_TIME, mTrimEndTime);
             results.putExtra(TOGGLE_SWITCH_STATE, mToggleSwitchState);
-            setResult(Activity.RESULT_OK, results);
+            setResult(AppCompatActivity.RESULT_OK, results);
             finish();
             return true;
         } else if (item.getItemId() == android.R.id.home) {
