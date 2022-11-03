@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Videokit.Black" parent="android:Theme.Holo">
+    <style name="Theme.Videokit.Black" parent="Theme.AppCompat">
         <item name="android:actionBarStyle">@style/Widget.Videokit.ActionBar.Black</item>
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:actionMenuTextColor">@android:color/white</item>
