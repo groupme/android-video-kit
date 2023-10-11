@@ -1,3 +1,6 @@
+# DEPRECATED
+This project is no longer being actively maintained.
+
 Android Video Kit
 =================
 
